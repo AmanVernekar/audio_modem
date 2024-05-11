@@ -1,6 +1,6 @@
-import numpy as np
+import numpy as np  
 
-channel = np.genfromtxt('dataset/channel.csv')
+channel = np.genfromtxt('dataset/channel.csv')  # Imports the channel file as an array. 
 
 # files = []
 # for i in range(1, 10):
@@ -13,16 +13,14 @@ prefix_len = 32
 symbol_len = block_len + prefix_len
 channel_len = len(channel)
 
-f1 = np.genfromtxt('dataset/file1.csv')
-num_symbols = int(len(f1)/symbol_len)
-f1 = np.array(np.array_split(f1, num_symbols))[:, 32:]
-# f1 = np.array(f1[32:])
-# print(f1[0])
+f1 = np.genfromtxt('dataset/file1.csv') # Import the file1 data into an array. 
+num_symbols = int(len(f1)/symbol_len)  # Number of symbols 
+f1 = np.array(np.array_split(f1, num_symbols))[:, 32:]   # Splits into symbols sent by the channel (length 1056) and removes first 32. 
 print(f1.shape)
 
-f1 = np.fft.fft(f1)
-channel = np.fft.fft(np.concatenate((channel, [0]*(block_len - channel_len))))
-f1 = f1/channel
-f1 = f1[:, 1:512]
-print(f1.shape)
-print(f1[0])
+f1 = np.fft.fft(f1)  # Does the fft of all symbols individually 
+channel = np.fft.fft(np.concatenate((channel, [0]*(block_len - channel_len))))   # Zero pads the end of the channel pulse and takes fft. 
+f1 = f1/channel  # Divide each value by its corrosponding channel fft coefficient. 
+f1 = f1[:, 1:512] # Selects the values from 1 to 511
+#print(f1.shape)
+#print(f1[0])
