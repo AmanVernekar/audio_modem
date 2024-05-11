@@ -22,5 +22,36 @@ f1 = np.fft.fft(f1)  # Does the fft of all symbols individually
 channel = np.fft.fft(np.concatenate((channel, [0]*(block_len - channel_len))))   # Zero pads the end of the channel pulse and takes fft. 
 f1 = f1/channel  # Divide each value by its corrosponding channel fft coefficient. 
 f1 = f1[:, 1:512] # Selects the values from 1 to 511
-#print(f1.shape)
+print(f1.shape)
 #print(f1[0])
+
+# Desicion rules
+condition_00 = (f1.real >= 0) & (f1.imag >= 0)
+condition_01 = (f1.real < 0) & (f1.imag >= 0)
+condition_11 = (f1.real < 0) & (f1.imag < 0)
+condition_10 = (f1.real >= 0) & (f1.imag < 0)
+
+
+# Apply the decision rules using np.where
+f1 = np.where(condition_00, "00", 
+              np.where(condition_01, "01", 
+              np.where(condition_11, "11", 
+              np.where(condition_10, "10", 
+              "Error"))))
+
+f1 = f1.ravel() # makes the array 1D
+file_string = "".join(f1) #creates string from 1D array
+print(file_string[:50])
+file_string_removed = file_string[0:224]+file_string[226:] #removing 0s after title
+
+def binary_to_ascii(binary_str):
+    # Break the binary string into groups of 8 bits
+    binary_chunks = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
+
+    # Convert each group of 8 bits to decimal and then to ASCII character
+    ascii_chars = ''.join([chr(int(chunk, 2)) for chunk in binary_chunks])
+
+    return ascii_chars
+
+
+print("ASCII Result:", binary_to_ascii(file_string_removed[:1000]))
