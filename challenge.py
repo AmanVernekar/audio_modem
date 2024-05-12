@@ -4,12 +4,6 @@ def file_to_binstr(file_num):
 
     channel = np.genfromtxt('dataset/channel.csv')  # Imports the channel file as an array. 
 
-# files = []
-# for i in range(1, 10):
-#     files.append(np.genfromtxt(f'dataset/file{i}.csv'))
-#     print(files[i-1][0])
-#     print((files[i-1].shape[0])/1056.0)
-
     block_len = 1024
     prefix_len = 32
     symbol_len = block_len + prefix_len
@@ -45,61 +39,9 @@ def file_to_binstr(file_num):
     file_string = "".join(file) #creates string from 1D array
     return file_string
 
-# file_num = 2
-# f1_file_string = file_to_binstr(file_num)
 
-# # file_string_removed = f1_file_string[0:224]+f1_file_string[226:] #removing 0s after title
-
-# def binary_to_ascii(binary_str):
-#     # Break the binary string into groups of 8 bits
-#     binary_chunks = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
-
-#     # Convert each group of 8 bits to decimal and then to ASCII character
-#     ascii_chars = ''.join([chr(int(chunk, 2)) for chunk in binary_chunks])
-
-#     return ascii_chars
-
-
-# print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[:1000]))
-# print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[216:1000]))
-# print()
-
-# file = open('binaryfile.bin', 'wb')
-# def bitstring_to_bytes(s):
-#     return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
-# file_bytes = bitstring_to_bytes(f1_file_string[216:369208])
-# file.write(file_bytes)
-# file.close()
-
-# with open("binary_file.bin", "b") as binary_file:
- #   binary_file.write(bytes(file_data, "utf-8"))
-
-# with open("file1.tiff", "w") as a:
-#     print("yo")
-#     a.write(bytes(file_data, "utf-8"))
-#     print("yo")
-
-
-# from PIL import Image
-
-# def save_binary_as_tiff(binary_data, output_filename):
-#     # Create a PIL.Image object from binary data
-#     image = Image.frombytes('L', (width, height), binary_data)
-
-#     # Save the image as TIFF
-#     image.save(output_filename)
-
-# # Example usage
-# binary_data = b'\x00\x01\x02\x03\x04...'  # Replace this with your binary data
-# output_filename = 'output.tiff'
-
-# save_binary_as_tiff(binary_data, output_filename)
-
-
-file_num = 5
-f1_file_string = file_to_binstr(file_num)
-
-# file_string_removed = f1_file_string[0:224]+f1_file_string[226:] #removing 0s after title
+file_num = 1   # File we are trying to decode
+f1_file_string = file_to_binstr(file_num)   # Make a string of binary
 
 def binary_to_ascii(binary_str):
     # Break the binary string into groups of 8 bits
@@ -113,11 +55,11 @@ def binary_to_ascii(binary_str):
 
 print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[:10000]))
 print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[232:1000]))
-print()
+print() 
 
-file = open(f'binaryfile{file_num}.bin', 'wb')
+file = open(f'binaryfile{file_num}.bin', 'wb')  # Make a binary file
 def bitstring_to_bytes(s):
-    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')
-file_bytes = bitstring_to_bytes(f1_file_string[232:232+(174068*8)])
-file.write(file_bytes)
-file.close()
+    return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')  # Function to turn the the string of bits into bytes
+file_bytes = bitstring_to_bytes(f1_file_string[232:232+(174068*8)]) # The raw file data in bytes 
+file.write(file_bytes)  # Write to our binary file
+file.close() 
