@@ -1,4 +1,5 @@
 import numpy as np  
+import os 
 
 def file_to_binstr(file_num):
 
@@ -40,8 +41,13 @@ def file_to_binstr(file_num):
     return file_string
 
 
-file_num = 1   # File we are trying to decode
-f1_file_string = file_to_binstr(file_num)   # Make a string of binary
+file_num = 9  # File we are trying to decode (Must change these four values for each file)
+raw_data_start = 216  # 216 for wav files and 232 for tiff files, can check this is correct as the second string printed 
+                      # should be the ascii following the file size in the first string. 
+file_size = 58584    # Must find this from the first printed string. 
+file_type = 'wav'    # wav or bin so it doesn't save as a bin file, all of them have been tried so put this in before 
+                      # you run the code so we don't make random files. (Just delete it if you do) 
+file_string = file_to_binstr(file_num)   # Make a string of binary
 
 def binary_to_ascii(binary_str):
     # Break the binary string into groups of 8 bits
@@ -53,13 +59,22 @@ def binary_to_ascii(binary_str):
     return ascii_chars
 
 
-print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[:10000]))
-print(f"ASCII Result for file {file_num}:", binary_to_ascii(f1_file_string[232:1000]))
+print(f"ASCII Result for file {file_num}:", binary_to_ascii(file_string[:1000]))
+print(f"ASCII Result for file {file_num}:", binary_to_ascii(file_string[raw_data_start:1000]))
 print() 
 
-file = open(f'binaryfile{file_num}.bin', 'wb')  # Make a binary file
+
+# define the path to the folder where you want to create the file 
+folder_path = "C:/Users/sophi/OneDrive - University of Cambridge/Documents/audio_modem/Decodedfiles"
+ 
+# define the file name and path 
+file_name = f'binaryfile{file_num}.{file_type}' 
+file_path = os.path.join(folder_path, file_name) 
+
+file = open(file_path, 'wb')  # Make the file
 def bitstring_to_bytes(s):
     return int(s, 2).to_bytes((len(s) + 7) // 8, byteorder='big')  # Function to turn the the string of bits into bytes
-file_bytes = bitstring_to_bytes(f1_file_string[232:232+(174068*8)]) # The raw file data in bytes 
-file.write(file_bytes)  # Write to our binary file
+file_bytes = bitstring_to_bytes(file_string[raw_data_start:raw_data_start+(file_size*8)]) # The raw file data in bytes 
+file.write(file_bytes)  # Write to our file
 file.close() 
+ 
