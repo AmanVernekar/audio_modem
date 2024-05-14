@@ -18,10 +18,12 @@ start_sig = [0]*sample_rate
 
 t = np.linspace(0, chirp_t, chirp_t*sample_rate)
 chirp_sig = chirp(t, f0=0.1, f1=22050, t1=chirp_t, method='linear')
-chirp_sig = list(chirp_sig)
-chirp_sig.extend(chirp_sig)  # Generates a second chirp 
+chirp_sig = list(chirp_sig) 
+chirp_prefix = chirp_sig[-40000:]
+chirp_w_prefix = chirp_prefix + chirp_sig
+chirp_w_prefix.extend(chirp_w_prefix)  # Generates a second chirp 
 
-overall_sig = start_sig.extend(chirp_sig)  # Adds the 1s of nothing at the start to the double chirp
+overall_sig = start_sig + chirp_w_prefix  # Adds the 1s of nothing at the start to the double chirp
 overall_sig.extend(tone)  # Adds the tone to the end of the signal so we can check if our detection is correct. 
 
 # Play the audio data
