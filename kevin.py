@@ -4,7 +4,7 @@ import sounddevice as sd
 
 # Tone Parameters
 tone_duration = 1.0  # seconds
-tone_frequency = 1000.0  # Hz 
+tone_frequency = 800.0  # Hz 
 sample_rate = 44100  # samples per second
 
 # Generate a tone to check our chirp detection is correct. 
@@ -15,16 +15,18 @@ tone = 0.5 * np.sin(2 * np.pi * tone_frequency * t_tone)
 # Chirp Parameters
 chirp_t = 2
 start_sig = [0]*sample_rate
+gap = [0]*0.5*sample_rate
 
 t = np.linspace(0, chirp_t, chirp_t*sample_rate)
 chirp_sig = chirp(t, f0=0.1, f1=22050, t1=chirp_t, method='linear')
 chirp_sig = list(chirp_sig) 
-chirp_prefix = chirp_sig[-40000:]
+chirp_prefix = chirp_sig[-15000:]
 chirp_w_prefix = chirp_prefix + chirp_sig
 #chirp_w_prefix.extend(chirp_w_prefix)  # Generates a second chirp 
 
-overall_sig = start_sig + chirp_w_prefix  # Adds the 1s of nothing at the start to the double chirp
-overall_sig.extend(tone)  # Adds the tone to the end of the signal so we can check if our detection is correct. 
+overall_sig = start_sig + chirp_w_prefix + gap + tone  # Adds the 1s of nothing at the start to the chirp with the prefix then 
+                                                       # a small gap and then the tone. 
+
 
 # Play the audio data
 sd.play(overall_sig, sample_rate)
