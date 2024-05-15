@@ -3,7 +3,7 @@ import sounddevice as sd
 import soundfile as sf
 import matplotlib.pyplot as plt
 from scipy.signal import correlate, chirp
-from numpy.fft import fft
+from numpy.fft import fft, ifft
 
 sample_rate = 44100  # samples per second
 duration = 7
@@ -72,12 +72,15 @@ plt.show()
 chirp_fft = fft(chirp_sig)
 detected_chirp = recording[detected_index-sample_rate:detected_index+sample_rate]
 detected_fft = fft(detected_chirp)
-channel = detected_fft/chirp_fft
-plt.plot(np.abs(channel))
+channel_fft = detected_fft/chirp_fft
+plt.plot(np.abs(channel_fft))
 plt.show()
 
-with open("rec.txt", "+w") as f:
-    f.write(str(list(recording)))
+plt.plot(np.abs(ifft(channel_fft)))
+plt.show()
+
+# with open("rec.txt", "+w") as f:
+#     f.write(str(list(recording)))
 
 count = 1000
 start = int(detected_index + chirp_duration*sample_rate/2)
