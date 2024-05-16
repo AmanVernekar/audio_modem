@@ -13,12 +13,12 @@ tone = 0.5 * np.sin(2 * np.pi * tone_frequency * t_tone)
 
 
 # Chirp Parameters
-chirp_t = 2
-start_sig = [0]*sample_rate
-gap = [0]*0.5*sample_rate
+chirp_duration = 2  # seconds
+start_sig = [0]*sample_rate  # 1 second silence
+gap = [0]*0.5*sample_rate  # 0.5s gap between chirp and tone
 
-t = np.linspace(0, chirp_t, chirp_t*sample_rate)
-chirp_sig = chirp(t, f0=0.1, f1=22050, t1=chirp_t, method='linear')
+t = np.linspace(0, chirp_duration, chirp_duration*sample_rate)  # time-values for chirp
+chirp_sig = chirp(t, f0=0.1, f1=22050, t1=chirp_duration, method='linear')
 chirp_sig = list(chirp_sig) 
 chirp_prefix = chirp_sig[-15000:]
 chirp_w_prefix = chirp_prefix + chirp_sig
