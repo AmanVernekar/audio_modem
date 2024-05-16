@@ -74,7 +74,8 @@ plt.show()
 
 
 chirp_fft = fft(chirp_sig)
-detected_chirp = recording[detected_index-sample_rate:detected_index+sample_rate]
+n = sample_rate*chirp_duration/2
+detected_chirp = recording[detected_index-n:detected_index+n]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 plt.plot(np.abs(channel_fft))
