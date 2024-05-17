@@ -8,11 +8,11 @@ from numpy.fft import fft, ifft
 sample_rate = 44100  # samples per second
 duration = 5
 chirp_duration = 2
-threshold = 100000
-start_freq = 20
-end_freq = 22050
-chirp_type = "logarithmic" 
-test_num = 2
+threshold = 0
+start_freq = 1000
+end_freq = 11000
+chirp_type = "linear" 
+test_num = 1
 
 t_total = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
@@ -57,7 +57,7 @@ plt.title("Recorded Audio Signal")
 plt.plot(t_total, recording)
 plt.axvline(x=detected_time, color='r', linestyle='--', label='Detected Midpoint')
 plt.axvline(x=detected_time - chirp_duration/2, color='r', linestyle='--', label='Detected Start Time')
-plt.axvline(x=detected_time + chirp_duration/2 + 0.5, color='r', linestyle='--', label='Detected End Time')
+plt.axvline(x=detected_time + chirp_duration/2, color='r', linestyle='--', label='Detected End Time')
 # plt.xlim(0, duration)
 
 plt.subplot(3, 1, 3)
@@ -74,30 +74,30 @@ plt.show()
 
 
 chirp_fft = fft(chirp_sig)
-n = sample_rate*chirp_duration/2
+n = int(sample_rate*chirp_duration/2)
+print(n)
 detected_chirp = recording[detected_index-n:detected_index+n]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 plt.plot(np.abs(channel_fft))
-#plt.show()
+plt.show()
 
 plt.plot(np.abs(ifft(channel_fft)))
-file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_channel'
-plt.savefig(f"Sophie_testing/{file_name}")
+# file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_channel'
+# plt.savefig(f"Sophie_testing/{file_name}")
 plt.show()
 
 # with open("rec.txt", "+w") as f:
 #     f.write(str(list(recording)))
 
-count = 2500
-start = int(detected_index + chirp_duration*sample_rate/2 + 0.5*sample_rate)
-test = recording[start-count:start+count]
-plt.plot(test)
-plt.axvline(x=count, color='r', linestyle='--', label='Detected End Time')
+# count = 2500
+# start = int(detected_index + chirp_duration*sample_rate/2 + 0.5*sample_rate)
+# test = recording[start-count:start+count]
+# plt.plot(test)
+# plt.axvline(x=count, color='r', linestyle='--', label='Detected End Time')
 
-file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_zoom_in'
-plt.savefig(f"Sophie_testing/{file_name}")
+# file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_zoom_in'
+# plt.savefig(f"Sophie_testing/{file_name}")
 
-plt.show()
-
+# plt.show()
 
