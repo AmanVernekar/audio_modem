@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.fft import fft, ifft
 
 #in this transmitter program:
 #step 1: encode file as binary data (e.g. LDPC)
@@ -50,11 +51,6 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
     """)
     return lower_bin, upper_bin
 
-bin_vals = calculate_bins(44100, 1000, 8000, 1024)
-
-lower_bin = bin_vals[0]
-upper_bin = bin_vals[1]
-
 def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
@@ -80,16 +76,13 @@ def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
     return ofdm_block_array  # returns array of OFDM blocks
 
 ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 2, 511)
-# print(ofdm_blocks)
 
 #step 4: IDFT each OFDM symbol
-
+ifft_ofdm_blocks = ifft(ofdm_blocks, axis=1)  # applies ifft to each row
 
 #step 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_block, prefix_length):
     return "ofdm block with cyclic prefix"
-
-# ^^ use this function on each of the blocks, or create a similar function to do it all at once
 
 #step 6: concatenate all time domain blocks. Do we want to space out these blocks? 
 # beyond just the prefix? (probs no)
