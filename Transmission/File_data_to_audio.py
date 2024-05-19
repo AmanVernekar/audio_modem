@@ -6,7 +6,33 @@ coded_info_sequence = np.array([1,0,1])  #placeholder coded sequence
 
 #step 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
-    return "return the modulated sequence"
+    # if binary_sequence has odd number of bits, add 0 at the end
+    if len(binary_sequence) % 2 != 0:
+        binary_sequence = np.append(binary_sequence, 0)
+    
+    # Initialize an empty array to store modulated symbols
+    modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
+    
+    # Mapping to complex symbols using QPSK
+    for i in range(0, len(binary_sequence), 2):
+        bit_pair = binary_sequence[i:i+2]
+        # 00 => 1+j
+        if np.array_equal(bit_pair, [0, 0]):
+            modulated_sequence[i//2] = 1 + 1j
+        # 01 => -1+j
+        elif np.array_equal(bit_pair, [0, 1]):
+            modulated_sequence[i//2] = -1 + 1j
+        # 11 => -1-j
+        elif np.array_equal(bit_pair, [1, 1]):
+            modulated_sequence[i//2] = -1 - 1j
+        # 11 => 1-j
+        elif np.array_equal(bit_pair, [1, 0]):
+            modulated_sequence[i//2] = 1 - 1j
+    
+    print(f"QPSK Modulated sequence: {modulated_sequence}")
+    return modulated_sequence
+
+qpsk_modulator(coded_info_sequence)
 
 #step 3: insert QPSK symbols into as many OFDM symbols as required (only in correct numbers of bins)
 #  - this should ensure that the OFDM symbol has conjugate symmetry
@@ -15,7 +41,11 @@ def qpsk_modulator(binary_sequence):
 # 44.1 kHz sampling rate
 # => maybe create a function to evaluate correct bins? from lower cutoff, upper cutoff, sampling freq
 
+lower_bin = 1
+upper_bin = 511
+
 def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
+    # split modulated sequence into blocks of length (upper_bin - lower_bin) + 1 
     return "arrray of OFDM blocks, with information in lower bin to upper bin"  # e.g. bins 1-511
 
 #step 4: IDFT each OFDM symbol
