@@ -29,10 +29,10 @@ def qpsk_modulator(binary_sequence):
         elif np.array_equal(bit_pair, [1, 0]):
             modulated_sequence[i//2] = 1 - 1j
     
-    print(f"QPSK Modulated sequence: {modulated_sequence}")
+    # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence
 
-qpsk_modulator(coded_info_sequence)
+modulated_sequence = qpsk_modulator(coded_info_sequence)
 
 #step 3: insert QPSK symbols into as many OFDM symbols as required (only in correct numbers of bins)
 #  - this should ensure that the OFDM symbol has conjugate symmetry
@@ -45,8 +45,31 @@ lower_bin = 1
 upper_bin = 511
 
 def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
-    # split modulated sequence into blocks of length (upper_bin - lower_bin) + 1 
-    return "arrray of OFDM blocks, with information in lower bin to upper bin"  # e.g. bins 1-511
+    #  calculate number of information bins
+    num_information_bins = (upper_bin - lower_bin) + 1
+
+    # append with 0s if not modulated_sequence is not multiple of num_information_bins
+    num_zeros = num_information_bins - (len(modulated_sequence) % num_information_bins)
+
+    if num_zeros != 0:
+        zero_block = np.zeros(num_zeros, dtype=complex)
+        modulated_sequence = np.append(modulated_sequence, zero_block)
+
+    # create new array containing modulated_sequence, where each row corresponds to an OFDM block
+    modulated_blocks = np.reshape(modulated_sequence, (-1, num_information_bins))  
+
+    # create a complex array of ofdm blocks, where each block is an array filled with 0s of length block_length
+    num_of_blocks = modulated_blocks.shape[0]
+    ofdm_block_array = np.zeros((num_of_blocks, block_length), dtype=complex)
+
+    # insert information in OFDM blocks: 
+    ofdm_block_array[:, lower_bin:upper_bin+1] = modulated_blocks  # populates first half of block
+    ofdm_block_array[:, block_length-upper_bin:(block_length-lower_bin)+1] = np.fliplr(np.conjugate(modulated_blocks))  # second half of block
+ 
+    return ofdm_block_array  # returns array of OFDM blocks
+
+ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 2, 511)
+# print(ofdm_blocks)
 
 #step 4: IDFT each OFDM symbol
 
