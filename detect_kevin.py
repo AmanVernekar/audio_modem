@@ -2,18 +2,19 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 import matplotlib.pyplot as plt
-from scipy.signal import correlate, chirp
+from scipy.signal import correlate, chirp, find_peaks
 from numpy.fft import fft, ifft
 
 sample_rate = 44100  # samples per second
-duration = 70
-chirp_duration = 60
+duration = 7
+chirp_duration = 0.5
 threshold = 0
 start_freq = 0.01
 end_freq = 22050
 chirp_type = "linear" 
 test_num = 1
 prefix_length = 5000
+chirp_count = 5
 
 t_total = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
@@ -34,16 +35,60 @@ sd.wait()
 recording = recording.flatten()  # Flatten to 1D array if necessary
 matched_filter_output = correlate(recording, chirp_sig, mode='same') #chaang to scipy correlzte
 
-# Find the maximum value in the matched filter output
-max_value = np.max(matched_filter_output)
-detected_index = np.argmax(matched_filter_output)
-detected_time = detected_index / sample_rate
+peaks, properties = find_peaks(matched_filter_output, distance=sample_rate*chirp_duration-1000, height=5e5)
+heights = properties['peak_heights']
 
-# Print detection results
-if max_value > threshold:
-    print(f"Detected signal at time: {detected_time:.2f} seconds with correlation value: {max_value:.2f}")
-else:
-    print("Signal not detected")
+plt.plot(matched_filter_output)
+plt.plot(peaks, heights)
+plt.show()
+
+chirp_fft = fft(chirp_sig)
+n = int(sample_rate*chirp_duration/2)
+channels = np.ndarray((chirp_count, 2*n), "complex")
+
+for i, peak in enumerate(peaks[:5]):
+    detected_chirp = recording[peak-n:peak+n]
+    detected_fft = fft(detected_chirp)
+    channel_fft = detected_fft/chirp_fft
+    channel = ifft(channel_fft)
+    channels[i] = channel
+
+channel_coeffs = np.mean(channels, axis=0)
+
+channel_power = channel_coeffs * np.conjugate(channel_coeffs)
+cum_power = np.cumsum(channel_power)
+total_power = cum_power[-1]
+for i, power in enumerate(cum_power):
+    if power > 0.9*total_power:
+        ninety_index = i
+        break
+
+plt.plot(channel_coeffs)
+plt.axvline(ninety_index)
+plt.title("Averaged channel")
+plt.show()
+
+plt.plot(np.abs(channel_coeffs))
+plt.axvline(ninety_index)
+plt.title("Averaged absolute channel")
+plt.show()
+
+
+
+
+
+
+
+# Find the maximum value in the matched filter output
+# max_value = np.max(matched_filter_output)
+# detected_index = np.argmax(matched_filter_output)
+# detected_time = detected_index / sample_rate
+
+# # Print detection results
+# if max_value > threshold:
+#     print(f"Detected signal at time: {detected_time:.2f} seconds with correlation value: {max_value:.2f}")
+# else:
+#     print("Signal not detected")
 
 # Plot the results
 # plt.figure(figsize=(12, 8))
@@ -74,20 +119,19 @@ else:
 # plt.show()
 
 
-chirp_fft = fft(chirp_sig)
 # plt.plot(chirp_fft)
-n = int(sample_rate*chirp_duration/2)
-# print(n)
-detected_chirp = recording[detected_index-n:detected_index+n]
-detected_fft = fft(detected_chirp)
-channel_fft = detected_fft/chirp_fft
-plt.plot(np.arange(0,1,1/(2*n)), np.abs(channel_fft))
-plt.show()
+# n = int(sample_rate*chirp_duration/2)
+# # print(n)
+# detected_chirp = recording[detected_index-n:detected_index+n]
+# detected_fft = fft(detected_chirp)
+# channel_fft = detected_fft/chirp_fft
+# plt.plot(np.arange(0,1,1/(2*n)), np.abs(channel_fft))
+# plt.show()
 
-plt.plot(np.arange(0,chirp_duration,1/(sample_rate)), np.abs(ifft(channel_fft)))
-# # file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_channel'
-# # plt.savefig(f"Sophie_testing/{file_name}")
-plt.show()
+# plt.plot(np.arange(0,chirp_duration,1/(sample_rate)), np.abs(ifft(channel_fft)))
+# # # file_name = f'{chirp_type}_f0_{start_freq}_f1_{end_freq}_time_{chirp_duration}_test_{test_num}_channel'
+# # # plt.savefig(f"Sophie_testing/{file_name}")
+# plt.show()
 
 # with open("rec.txt", "+w") as f:
 #     f.write(str(list(recording)))
