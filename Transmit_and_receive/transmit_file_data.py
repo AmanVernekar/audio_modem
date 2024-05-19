@@ -1,11 +1,10 @@
 import numpy as np
 from numpy.fft import fft, ifft
 
-#in this transmitter program:
-#step 1: encode file as binary data (e.g. LDPC)
+# step 1: encode file as binary data (e.g. LDPC)
 coded_info_sequence = np.array([1,0,1])  #placeholder coded sequence
 
-#step 2: Modulate as complex symbols using QPSK
+# step 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
@@ -14,7 +13,7 @@ def qpsk_modulator(binary_sequence):
     # Initialize an empty array to store modulated symbols
     modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
     
-    # Mapping to complex symbols using QPSK
+    # Mapping to complex symbols using QPSK   !! Do we care about energy of each symbol? !!
     for i in range(0, len(binary_sequence), 2):
         bit_pair = binary_sequence[i:i+2]
         # 00 => 1+j
@@ -33,11 +32,9 @@ def qpsk_modulator(binary_sequence):
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence
 
-modulated_sequence = qpsk_modulator(coded_info_sequence)
+modulated_sequence = qpsk_modulator(coded_info_sequence) 
 
-#step 3: insert QPSK symbols into as many OFDM symbols as required (only in correct numbers of bins)
-
-# function for calculating bin values (optional)
+# step 2.5: function for calculating bin values (optional)
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
     lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_block_length).astype(int)  # round up
     upper_bin = np.floor((upper_freq / sample_rate) * ofdm_block_length).astype(int)  # round down
@@ -51,6 +48,9 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
     """)
     return lower_bin, upper_bin
 
+# step 3: insert QPSK symbols into as many OFDM symbols as required 
+# !! from here onwards, there is a confusing naming with ofdm symbol/block/ifft. 
+# We should change these to make this more clear
 def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
@@ -77,39 +77,20 @@ def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
 
 ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 2, 511)
 
-#step 4: IDFT each OFDM symbol
+# step 4: IDFT each OFDM symbol
 ifft_ofdm_blocks = ifft(ofdm_blocks, axis=1)  # applies ifft to each row
 
-#step 5: add cyclic prefix to each part
+# step 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_blocks, prefix_length):
     block_prefixes = ofdm_blocks[:, -prefix_length:]
     ofdm_blocks_w_prefixes = np.concatenate((block_prefixes, ofdm_blocks), axis=1)
     return ofdm_blocks_w_prefixes
 
-#step 6: concatenate all time domain blocks. Do we want to space out these blocks? 
-# beyond just the prefix? (probs no)
-def concatenate_blocks(data):
-    return "string of real values"
+ofdm_blocks_w_prefixes = add_cyclic_prefix(ifft_ofdm_blocks, 2)
 
+# step 6: flatten all time domain blocks into one array
+concatenated_blocks = ofdm_blocks_w_prefixes.flatten()
 
-#step 7:convert to audio file to transmit across channel. add chirp beforehand etc.
+# step 7:convert to audio file to transmit across channel. add chirp beforehand etc.
 def convert_values_to_audio(data):
     return "audio file"
-
-#for separate decoder program:
-#step 1: perform channel estimation and synchronisation steps
-#step 2: crop audio file to the data
-#step 3: cut into different blocks and get rid of cyclic prefix
-#step 4: take the DFT
-#step 5: divide by channel coefficients determined in step 1
-#step 6: choose complex values corresponding to information bits
-#step 7: map each value to bits using QPSK decision regions
-detected_coded_seq = np.array([1,0,0])
-
-#step 8: decode recieved bits to information bits
-#step 9: convert information bits to file using standardised preamble.
-
-
-#for testing: evaluate performance using percentage of coded bits successfully detected.
-accuracy = np.mean(coded_info_sequence == detected_coded_seq) *100  # percentage of matching bits
-print(f"Percentage of accurately detected bits: {accuracy:.5f}%")
