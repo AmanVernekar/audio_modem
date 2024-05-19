@@ -53,9 +53,38 @@ for i, peak in enumerate(peaks[:5]):
     channel = ifft(channel_fft)
     channels[i] = channel
 
-channel_coeffs = np.mean(channels, axis=0)
+def impulse_start(channel_impulse):    # Function that takes a recorded chirp section and finds where it jumps to start (not working)   
+    channel_impulse_max = np.max(channel_impulse)
+    channel_impulse_10_percent = 0.1 * channel_impulse_max
+    channel_impulse_90_percent = 0.9 * channel_impulse_max
 
-channel_power = channel_coeffs * np.conjugate(channel_coeffs)
+    impulse_start = None
+
+    for i in range(len(channel_impulse) - 1):
+        if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 1] > channel_impulse_90_percent:
+            impulse_start = i + 1
+            break
+
+    if impulse_start > len(channel_impulse) / 2:
+        impulse_start = impulse_start - len(channel_impulse)
+
+    return impulse_start
+
+impulse_starts = []
+
+for i in range(len(channels)):  # Finds the index at which we must shift for each recorded channel.
+    impulse_start[i] = impulse_start(channels[i])
+
+for i in range(len(channels)):   # resynchronises 
+    detected_chirp = recording[peak-n-impulse_start[i]:peak+n-impulse_start[i]]
+    detected_fft = fft(detected_chirp)
+    channel_fft = detected_fft/chirp_fft
+    channel = ifft(channel_fft)
+    channels[i] = channel
+
+average_channel_impulse = np.mean(channels, axis=0)
+
+channel_power = average_channel_impulse * np.conjugate(average_channel_impulse)
 cum_power = np.cumsum(channel_power)
 total_power = cum_power[-1]
 for i, power in enumerate(cum_power):
@@ -63,18 +92,15 @@ for i, power in enumerate(cum_power):
         ninety_index = i
         break
 
-plt.plot(channel_coeffs)
+plt.plot(average_channel_impulse)
 plt.axvline(ninety_index)
 plt.title("Averaged channel")
 plt.show()
 
-plt.plot(np.abs(channel_coeffs))
+plt.plot(np.abs(average_channel_impulse))
 plt.axvline(ninety_index)
 plt.title("Averaged absolute channel")
 plt.show()
-
-
-
 
 
 
