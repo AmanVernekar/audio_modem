@@ -81,8 +81,10 @@ ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 2, 511)
 ifft_ofdm_blocks = ifft(ofdm_blocks, axis=1)  # applies ifft to each row
 
 #step 5: add cyclic prefix to each part
-def add_cyclic_prefix(ofdm_block, prefix_length):
-    return "ofdm block with cyclic prefix"
+def add_cyclic_prefix(ofdm_blocks, prefix_length):
+    block_prefixes = ofdm_blocks[:, -prefix_length:]
+    ofdm_blocks_w_prefixes = np.concatenate((block_prefixes, ofdm_blocks), axis=1)
+    return ofdm_blocks_w_prefixes
 
 #step 6: concatenate all time domain blocks. Do we want to space out these blocks? 
 # beyond just the prefix? (probs no)
