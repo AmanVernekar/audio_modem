@@ -35,14 +35,25 @@ def qpsk_modulator(binary_sequence):
 modulated_sequence = qpsk_modulator(coded_info_sequence)
 
 #step 3: insert QPSK symbols into as many OFDM symbols as required (only in correct numbers of bins)
-#  - this should ensure that the OFDM symbol has conjugate symmetry
 
-# lets use frequency bins for information of 1kHz to 8kHz (approximately)
-# 44.1 kHz sampling rate
-# => maybe create a function to evaluate correct bins? from lower cutoff, upper cutoff, sampling freq
+# function for calculating bin values (optional)
+def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
+    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_block_length).astype(int)  # round up
+    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_block_length).astype(int)  # round down
 
-lower_bin = 1
-upper_bin = 511
+    print(f"""
+    for the parameters: sample rate = {sample_rate}Hz
+                        information bandlimited to {lower_freq} - {upper_freq}Hz
+                        OFDM block length = {ofdm_block_length}
+                lower bin is {lower_bin}
+                upper bin is {upper_bin}
+    """)
+    return lower_bin, upper_bin
+
+bin_vals = calculate_bins(44100, 1000, 8000, 1024)
+
+lower_bin = bin_vals[0]
+upper_bin = bin_vals[1]
 
 def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
     #  calculate number of information bins
