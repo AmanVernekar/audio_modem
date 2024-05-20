@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.fft import fft, ifft
+import sounddevice as sd
 
 # step 1: encode file as binary data (e.g. LDPC)
-coded_info_sequence = np.array([1,0,1])  #placeholder coded sequence
+coded_info_sequence = np.random.randint(0,2,size = 100000) #placeholder coded sequence
 
 # step 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
@@ -48,6 +49,8 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
     """)
     return lower_bin, upper_bin
 
+# calculate_bins(44100, 1000, 8000, 1024)
+
 # step 3: insert QPSK symbols into as many OFDM symbols as required 
 # !! from here onwards, there is a confusing naming with ofdm symbol/block/ifft. 
 # We should change these to make this more clear
@@ -75,10 +78,11 @@ def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
  
     return ofdm_block_array  # returns array of OFDM blocks
 
-ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 2, 511)
+ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 24, 185)
 
 # step 4: IDFT each OFDM symbol
 ifft_ofdm_blocks = ifft(ofdm_blocks, axis=1)  # applies ifft to each row
+ifft_ofdm_blocks = ifft_ofdm_blocks.real  # takes real part of ifft
 
 # step 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_blocks, prefix_length):
@@ -92,5 +96,13 @@ ofdm_blocks_w_prefixes = add_cyclic_prefix(ifft_ofdm_blocks, 2)
 concatenated_blocks = ofdm_blocks_w_prefixes.flatten()
 
 # step 7:convert to audio file to transmit across channel. add chirp beforehand etc.
-def convert_values_to_audio(data):
-    return "audio file"
+def convert_values_to_audio(data, sampling_rate):
+    # normalise to between -1 and 1:
+    max_absolute_val = np.max(np.abs(data))
+    waveform = data / max_absolute_val
+
+    # play the waveform
+    sd.play(waveform, sampling_rate)
+    sd.wait()
+
+convert_values_to_audio(concatenated_blocks, 44100)

@@ -1,4 +1,5 @@
-#step 1: perform channel estimation and synchronisation steps
+# step 1: 
+#step 2: perform channel estimation and synchronisation steps
 #step 2: crop audio file to the data
 #step 3: cut into different blocks and get rid of cyclic prefix
 #step 4: take the DFT
