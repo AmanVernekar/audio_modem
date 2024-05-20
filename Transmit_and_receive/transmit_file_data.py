@@ -36,14 +36,14 @@ def qpsk_modulator(binary_sequence):
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 
 # step 2.5: function for calculating bin values (optional)
-def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
-    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_block_length).astype(int)  # round up
-    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_block_length).astype(int)  # round down
+def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
+    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
+    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round down
 
     print(f"""
     for the parameters: sample rate = {sample_rate}Hz
                         information bandlimited to {lower_freq} - {upper_freq}Hz
-                        OFDM block length = {ofdm_block_length}
+                        OFDM symbol length = {ofdm_chunk_length}
                 lower bin is {lower_bin}
                 upper bin is {upper_bin}
     """)
@@ -52,9 +52,7 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_block_length):
 # calculate_bins(44100, 1000, 8000, 1024)
 
 # step 3: insert QPSK symbols into as many OFDM symbols as required 
-# !! from here onwards, there is a confusing naming with ofdm symbol/block/ifft. 
-# We should change these to make this more clear
-def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
+def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
 
@@ -65,35 +63,35 @@ def create_ofdm_blocks(modulated_sequence, block_length, lower_bin, upper_bin):
         zero_block = np.zeros(num_zeros, dtype=complex)
         modulated_sequence = np.append(modulated_sequence, zero_block)
 
-    # create new array containing modulated_sequence, where each row corresponds to an OFDM block
-    modulated_blocks = np.reshape(modulated_sequence, (-1, num_information_bins))  
+    # create new array containing modulated_sequence, where each row corresponds to an OFDM data chunk
+    separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins))  
 
-    # create a complex array of ofdm blocks, where each block is an array filled with 0s of length block_length
-    num_of_blocks = modulated_blocks.shape[0]
-    ofdm_block_array = np.zeros((num_of_blocks, block_length), dtype=complex)
+    # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
+    num_of_symbols = separated_mod_sequence.shape[0]
+    ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)
 
     # insert information in OFDM blocks: 
-    ofdm_block_array[:, lower_bin:upper_bin+1] = modulated_blocks  # populates first half of block
-    ofdm_block_array[:, block_length-upper_bin:(block_length-lower_bin)+1] = np.fliplr(np.conjugate(modulated_blocks))  # second half of block
+    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
+    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
  
-    return ofdm_block_array  # returns array of OFDM blocks
+    return ofdm_datachunk_array  # returns array of OFDM blocks
 
-ofdm_blocks = create_ofdm_blocks(modulated_sequence, 1024, 24, 185)
+ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, 1024, 24, 185)
 
 # step 4: IDFT each OFDM symbol
-ifft_ofdm_blocks = ifft(ofdm_blocks, axis=1)  # applies ifft to each row
-ifft_ofdm_blocks = ifft_ofdm_blocks.real  # takes real part of ifft
+time_domain_datachunks = ifft(ofdm_datachunks, axis=1)  # applies ifft to each row
+time_domain_datachunks = time_domain_datachunks.real  # takes real part of ifft
 
 # step 5: add cyclic prefix to each part
-def add_cyclic_prefix(ofdm_blocks, prefix_length):
-    block_prefixes = ofdm_blocks[:, -prefix_length:]
-    ofdm_blocks_w_prefixes = np.concatenate((block_prefixes, ofdm_blocks), axis=1)
-    return ofdm_blocks_w_prefixes
+def add_cyclic_prefix(ofdm_datachunks, prefix_length):
+    block_prefixes = ofdm_datachunks[:, -prefix_length:]
+    ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)
+    return ofdm_symbols
 
-ofdm_blocks_w_prefixes = add_cyclic_prefix(ifft_ofdm_blocks, 2)
+ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, 2)
 
 # step 6: flatten all time domain blocks into one array
-concatenated_blocks = ofdm_blocks_w_prefixes.flatten()
+concatenated_blocks = ofdm_symbols.flatten()
 
 # step 7:convert to audio file to transmit across channel. add chirp beforehand etc.
 def convert_values_to_audio(data, sampling_rate):
