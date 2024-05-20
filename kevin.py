@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 tone_duration = 1.0  # seconds
 tone_frequency = 800.0  # Hz 
 sample_rate = 44100  # samples per second
-cyclic_prefix = 5000
+cyclic_prefix = 1024
 
 # Generate a tone to check our chirp detection is correct. 
 t_tone = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
@@ -17,7 +17,7 @@ tone = tone_prefix + tone
 
 
 # Chirp Parameters
-chirp_duration = 0.5  # seconds
+chirp_duration = 2  # seconds
 start_sig = [0]*sample_rate  # 1 second silence
 half_s_samples = int(0.5*sample_rate) #generates half a second of samples 
 # gap = [0]*half_s_samples
@@ -32,8 +32,9 @@ chirp_prefix = chirp_sig[-cyclic_prefix:]
 chirp_suffix = chirp_sig[:cyclic_prefix]
 chirp_w_prefix_suffix = chirp_prefix + chirp_sig + chirp_suffix
 
-overall_sig = start_sig + chirp_w_prefix_suffix * 5 + tone# + gap  # Adds the 1s of nothing at the start to the chirp with the prefix then 
-                                                       # a small gap and then the tone. 
+waveform = list(np.load("waveform.npy"))
+
+overall_sig = start_sig + chirp_w_prefix_suffix + waveform
 
 # print(overall_sig)
 
