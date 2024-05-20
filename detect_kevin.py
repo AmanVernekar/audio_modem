@@ -6,15 +6,15 @@ from scipy.signal import correlate, chirp, find_peaks
 from numpy.fft import fft, ifft
 
 sample_rate = 44100  # samples per second
-duration = 7
-chirp_duration = 0.5
+duration = 5
+chirp_duration = 1
 threshold = 0
 start_freq = 0.01
 end_freq = 22050
 chirp_type = "linear" 
 test_num = 1
 prefix_length = 5000
-chirp_count = 5
+chirp_count = 1
 
 t_total = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
@@ -35,7 +35,7 @@ sd.wait()
 recording = recording.flatten()  # Flatten to 1D array if necessary
 matched_filter_output = correlate(recording, chirp_sig, mode='same') #chaang to scipy correlzte
 
-peaks, properties = find_peaks(matched_filter_output, distance=sample_rate*chirp_duration-1000, height=5e5)
+peaks, properties = find_peaks(matched_filter_output, distance=sample_rate*chirp_duration-1000, height=1e5)
 heights = properties['peak_heights']
 
 plt.plot(matched_filter_output)
@@ -46,19 +46,22 @@ chirp_fft = fft(chirp_sig)
 n = int(sample_rate*chirp_duration/2)
 channels = np.ndarray((chirp_count, 2*n), "complex")
 
-for i, peak in enumerate(peaks[:5]):
+for i, peak in enumerate(peaks[:1]):
     detected_chirp = recording[peak-n:peak+n]
     detected_fft = fft(detected_chirp)
     channel_fft = detected_fft/chirp_fft
     channel = ifft(channel_fft)
     channels[i] = channel
 
-def impulse_start(channel_impulse):    # Function that takes a recorded chirp section and finds where it jumps to start (not working)   
+plt.plot(abs(channels[0]))
+plt.show()
+
+def impulse_start_1(channel_impulse):    # Function that takes a recorded chirp section and finds where it jumps to start (not working)   
     channel_impulse_max = np.max(channel_impulse)
     channel_impulse_10_percent = 0.1 * channel_impulse_max
-    channel_impulse_90_percent = 0.9 * channel_impulse_max
+    channel_impulse_90_percent = 0.5 * channel_impulse_max
 
-    impulse_start = None
+    impulse_start = 0
 
     for i in range(len(channel_impulse) - 1):
         if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 1] > channel_impulse_90_percent:
@@ -70,17 +73,30 @@ def impulse_start(channel_impulse):    # Function that takes a recorded chirp se
 
     return impulse_start
 
+def impulse_start_2(channel_impulse):
+    impulse_start = np.argmax(channel_impulse)
+
+    if impulse_start > len(channel_impulse) / 2:
+        impulse_start = impulse_start - len(channel_impulse)
+
+    return int(impulse_start)
+
 impulse_starts = []
 
 for i in range(len(channels)):  # Finds the index at which we must shift for each recorded channel.
-    impulse_start[i] = impulse_start(channels[i])
+    impulse_starts.append(impulse_start_1(channels[i]))
 
-for i in range(len(channels)):   # resynchronises 
-    detected_chirp = recording[peak-n-impulse_start[i]:peak+n-impulse_start[i]]
+print(impulse_starts)
+
+for i, peak in enumerate(peaks[:1]):
+    detected_chirp = recording[peak-n+impulse_starts[i]:peak+n+impulse_starts[i]]
     detected_fft = fft(detected_chirp)
     channel_fft = detected_fft/chirp_fft
     channel = ifft(channel_fft)
     channels[i] = channel
+
+plt.plot(abs(channels[0]))
+plt.show()
 
 average_channel_impulse = np.mean(channels, axis=0)
 
