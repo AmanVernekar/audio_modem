@@ -96,6 +96,7 @@ detected_chirp = recording[detected_index-n:detected_index]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
+print(np.argmax(abs(channel_impulse)))
 
 plt.plot(abs(channel_impulse))
 plt.show()
@@ -119,10 +120,11 @@ def impulse_start_10_90_jump(channel_impulse):
 
 
 def impulse_start_max(channel_impulse):
-    impulse_start = np.argmax(channel_impulse)
+    impulse_start = np.argmax(abs(channel_impulse))
+    print(impulse_start)
     if impulse_start > len(channel_impulse) / 2:
         impulse_start = impulse_start - len(channel_impulse)
-
+    print(impulse_start)
     return impulse_start
 
 
@@ -162,7 +164,7 @@ impulse_shift = impulse_start_max(channel_impulse)
 
 
 #Recalculate the section of chirp we want
-detected_chirp = recording[detected_index-n-impulse_shift:detected_index-impulse_shift]
+detected_chirp = recording[detected_index-n+impulse_shift:detected_index+impulse_shift]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
