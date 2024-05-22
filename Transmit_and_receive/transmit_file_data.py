@@ -4,7 +4,6 @@ import sounddevice as sd
 from scipy.signal import chirp
 
 # step 1: encode file as binary data (e.g. LDPC)
-# coded_info_sequence = np.random.randint(0,2,size = 100000) #placeholder coded sequence
 
 prefix_len = 1024
 datachunk_len = 2048
@@ -61,7 +60,7 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
 
 lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
 
-# step 3: insert QPSK symbols into as many OFDM symbols as required 
+# step 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
@@ -78,7 +77,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
-    ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)
+    ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
 
     # insert information in OFDM blocks: 
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
@@ -115,4 +114,4 @@ def convert_values_to_audio(data, sampling_rate):
     np.save("waveform.npy", waveform)
 
 print(len(concatenated_blocks))
-convert_values_to_audio(concatenated_blocks, 44100)
+convert_values_to_audio(concatenated_blocks, sample_rate)
