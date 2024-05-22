@@ -38,24 +38,24 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
 lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
 
 t_total = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-t_chirp = np.linspace(0, chirp_duration/2, int(sample_rate * chirp_duration), endpoint=False)
+t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
 
 chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
 chirp_sig = list(chirp_sig)
 
 
 # # Using real recording 
-# recording = sd.rec(sample_rate*duration, samplerate=sample_rate, channels=1, dtype='int16')
-# sd.wait()
+recording = sd.rec(sample_rate*duration, samplerate=sample_rate, channels=1, dtype='int16')
+sd.wait()
 
-# # # # step 2: perform channel estimation and synchronisation steps
+# step 2: perform channel estimation and synchronisation steps
 
-# # # # Apply the matched filter for synchronisation
-# recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save("recording_to_test_with.npy", recording)
+# Apply the matched filter for synchronisation
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save("recording_to_test_with.npy", recording)
 
 # Using saved recording
-recording = np.load("recording_to_test_with.npy")
+# recording = np.load("recording_to_test_with.npy")
 
 # The matched_filter_output has been changed to full as this is the default method and might be easier to work with
 # this means that the max index detected is now at the end of the chirp

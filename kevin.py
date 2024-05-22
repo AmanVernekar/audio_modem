@@ -26,7 +26,7 @@ start_freq = 0.01
 end_freq = 22050
 chirp_type = "linear" 
 
-t = np.linspace(0, chirp_duration/2, int(chirp_duration*sample_rate))  # time-values for chirp
+t = np.linspace(0, chirp_duration, int(chirp_duration*sample_rate))  # time-values for chirp
 chirp_sig = chirp(t, f0=start_freq, f1=end_freq, t1=chirp_duration, method=chirp_type)
 chirp_sig = list(chirp_sig) 
 
