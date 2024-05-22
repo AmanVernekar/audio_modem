@@ -11,7 +11,7 @@ symbol_len = datachunk_len + prefix_len
 lower_freq = 1000
 upper_freq = 11000
 sample_rate = 44100  # samples per second
-duration = 5
+duration = 6
 chirp_duration = 2
 chirp_start_freq = 0.01
 chirp_end_freq = 22050
@@ -88,8 +88,12 @@ impulse_shift = impulse_start(channel_impulse)
 #Recalculate the section of chirp we want
 detected_chirp = recording[detected_index-n+impulse_shift:detected_index+n+impulse_shift]
 detected_fft = fft(detected_chirp)
-channel_fft = detected_fft/chirp_fft
-channel_impulse = ifft(channel_fft)
+old_channel_fft = detected_fft/chirp_fft
+channel_impulse = ifft(old_channel_fft)[:prefix_len]
+
+channel_impulse = np.array(list(channel_impulse) + [0]*(datachunk_len-prefix_len))
+
+channel_fft = fft(channel_impulse)
 
 plt.plot(abs(channel_impulse))
 plt.show()
@@ -98,14 +102,16 @@ plt.show()
 data_start_index = detected_index+n+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load("../mod_seq.npy")
+source_mod_seq = np.load("mod_seq.npy")
 
 
 # step 3: cut into different blocks and get rid of cyclic prefix
 
 num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
 
-time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+a = np.array(np.array_split(recording_without_chirp, num_symbols))
+print(a.shape)
+time_domain_datachunks = a[:, prefix_len:]
 
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 ofdm_datachunks = ofdm_datachunks/channel_fft  # Divide each value by its corrosponding channel fft coefficient. 
@@ -119,7 +125,7 @@ colors = np.where(source_mod_seq == 1+1j, "b",
             np.where(source_mod_seq == 1-1j, "y", 
             "Error"))))
 
-plt.scatter(data.real, data.imag, c=colors)
+plt.scatter(data.real, data.imag) #, c=colors)
 plt.show()
 
 
