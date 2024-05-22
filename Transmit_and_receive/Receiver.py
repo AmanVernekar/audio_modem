@@ -13,13 +13,13 @@ symbol_len = datachunk_len + prefix_len
 lower_freq = 1000
 upper_freq = 11000
 sample_rate = 44100  # samples per second
-duration = 6
-chirp_duration = 2
+duration = 15
+chirp_duration = 5
 chirp_start_freq = 0.01
 chirp_end_freq = 22050
 chirp_type = "linear"
 
-recording_data_len = 67584
+recording_data_len = 331776
 
 # step 1: Generate transmitted chirp and record signal
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
@@ -52,7 +52,7 @@ sd.wait()
 
 # Apply the matched filter for synchronisation
 recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save("recording_to_test_with.npy", recording)
+np.save("rep_recording_to_test_with.npy", recording)
 
 # Using saved recording
 # recording = np.load("recording_to_test_with.npy")
@@ -169,7 +169,7 @@ detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
 
-channel_impulse_cut = channel_impulse[:2048]
+channel_impulse_cut = channel_impulse[:datachunk_len]
 channel_coefficients = fft(channel_impulse_cut)
 
 plt.plot(abs(channel_impulse))
@@ -179,7 +179,7 @@ plt.show()
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load("mod_seq.npy")
+source_mod_seq = np.load("rep_mod_seq.npy")
 print(len(source_mod_seq))
 
 

@@ -9,6 +9,7 @@ tone_duration = 1.0  # seconds
 tone_frequency = 800.0  # Hz 
 sample_rate = 44100  # samples per second
 cyclic_prefix = 1024
+repetition_factor = 5
 
 # Generate a tone to check our chirp detection is correct. 
 t_tone = np.linspace(0, tone_duration, int(sample_rate * tone_duration), endpoint=False)
@@ -18,7 +19,7 @@ tone = tone_prefix + tone
 
 
 # Chirp Parameters
-chirp_duration = 2  # seconds
+chirp_duration = 5  # seconds
 start_sig = [0]*sample_rate  # 1 second silence
 half_s_samples = int(0.5*sample_rate) #generates half a second of samples 
 # gap = [0]*half_s_samples
@@ -35,9 +36,10 @@ chirp_prefix = chirp_sig[-cyclic_prefix:]
 chirp_suffix = chirp_sig[:cyclic_prefix]
 chirp_w_prefix_suffix = chirp_prefix + chirp_sig + chirp_suffix
 
-waveform = list(np.load("waveform.npy"))
+rep_waveform = list(np.load("rep_waveform.npy"))
+# repetition_waveform = list(np.repeat(waveform, repetition_factor))
 
-overall_sig = start_sig + chirp_w_prefix_suffix + waveform
+overall_sig = start_sig + chirp_w_prefix_suffix + rep_waveform
 
 # print(overall_sig)
 
@@ -45,5 +47,5 @@ overall_sig = start_sig + chirp_w_prefix_suffix + waveform
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-output_file = 'audio_to_test_with.wav'
+output_file = 'rep_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)

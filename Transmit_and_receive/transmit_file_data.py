@@ -10,8 +10,10 @@ datachunk_len = 2048
 lower_freq = 1000
 upper_freq = 11000
 sample_rate = 44100
+repetition_factor = 5
 
 coded_info_sequence = np.load("binary_data.npy")
+rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # step 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
@@ -41,8 +43,8 @@ def qpsk_modulator(binary_sequence):
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence
 
-modulated_sequence = qpsk_modulator(coded_info_sequence) 
-np.save("mod_seq.npy", modulated_sequence)
+modulated_sequence = qpsk_modulator(rep_sequence) 
+np.save("rep_mod_seq.npy", modulated_sequence)
 
 # step 2.5: function for calculating bin values (optional)
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
@@ -111,7 +113,7 @@ def convert_values_to_audio(data, sampling_rate):
     # play the waveform
     # sd.play(waveform, sampling_rate)
     # sd.wait()
-    np.save("waveform.npy", waveform)
+    np.save("rep_waveform.npy", waveform)
 
 print(len(concatenated_blocks))
 convert_values_to_audio(concatenated_blocks, sample_rate)
