@@ -13,7 +13,7 @@ symbol_len = datachunk_len + prefix_len
 lower_freq = 1000
 upper_freq = 11000
 sample_rate = 44100  # samples per second
-duration = 15
+duration = 16
 chirp_duration = 5
 chirp_start_freq = 0.01
 chirp_end_freq = 22050
@@ -26,13 +26,13 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
     lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
     upper_bin = np.floor((upper_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round down
 
-    print(f"""
-    for the parameters: sample rate = {sample_rate}Hz
-                        information bandlimited to {lower_freq} - {upper_freq}Hz
-                        OFDM symbol length = {ofdm_chunk_length}
-                lower bin is {lower_bin}
-                upper bin is {upper_bin}
-    """)
+    # print(f"""
+    # for the parameters: sample rate = {sample_rate}Hz
+    #                     information bandlimited to {lower_freq} - {upper_freq}Hz
+    #                     OFDM symbol length = {ofdm_chunk_length}
+    #             lower bin is {lower_bin}
+    #             upper bin is {upper_bin}
+    # """)
     return lower_bin, upper_bin
 
 lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
@@ -45,17 +45,17 @@ chirp_sig = list(chirp_sig)
 
 
 # # Using real recording 
-recording = sd.rec(sample_rate*duration, samplerate=sample_rate, channels=1, dtype='int16')
-sd.wait()
+# recording = sd.rec(sample_rate*duration, samplerate=sample_rate, channels=1, dtype='int16')
+# sd.wait()
 
-# step 2: perform channel estimation and synchronisation steps
+# # step 2: perform channel estimation and synchronisation steps
 
-# Apply the matched filter for synchronisation
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save("rep_recording_to_test_with.npy", recording)
+# # Apply the matched filter for synchronisation
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save("rep_recording_to_test_with.npy", recording)
 
 # Using saved recording
-# recording = np.load("recording_to_test_with.npy")
+recording = np.load("rep_recording_to_test_with.npy")
 
 # The matched_filter_output has been changed to full as this is the default method and might be easier to work with
 # this means that the max index detected is now at the end of the chirp
