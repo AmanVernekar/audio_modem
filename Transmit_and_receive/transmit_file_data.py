@@ -149,6 +149,8 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
+np.save('onesymbol_overall.npy', overall_sig)
+
 output_file = 'onesymbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
