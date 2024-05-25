@@ -7,13 +7,13 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 
-datachunk_len = 2048                        # length of the data in the OFDM symbol
-prefix_len = 1024                           # length of cyclic prefix
+datachunk_len = 4096                        # length of the data in the OFDM symbol
+prefix_len = 512                           # length of cyclic prefix
 symbol_len = datachunk_len + prefix_len     # total length of symbol
 lower_freq = 1000                           # lower frequency used for data
 upper_freq = 11000                          # upper frequency used for data
 sample_rate = 44100                         # samples per second
-rec_duration = 6                            # duration of recording in seconds
+rec_duration = 7                            # duration of recording in seconds
 chirp_duration = 5                          # duration of chirp in seconds
 chirp_start_freq = 0.01                     # chirp start freq
 chirp_end_freq = 22050                      # chirp end freq
