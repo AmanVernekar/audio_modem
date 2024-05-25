@@ -16,9 +16,11 @@ sample_rate = parameters.sample_rate        # sample rate
 repetition_factor = 5       # WHAT IS THIS?
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
+binary_len = (upper_bin-lower_bin+1)*2
+symbol_count = parameters.symbol_count
 
 # WHAT IS THE REPETITION?
-coded_info_sequence = np.load("binary_data.npy")[:1532]
+coded_info_sequence = np.load("binary_data.npy")[:symbol_count*binary_len]
 # rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # STEP 2: Modulate as complex symbols using QPSK
@@ -51,7 +53,7 @@ def qpsk_modulator(binary_sequence):
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 print(len(modulated_sequence))
-np.save("mod_seq_onesymbol.npy", modulated_sequence)
+np.save(f"mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -135,9 +137,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save('onesymbol_overall.npy', overall_sig)
+np.save(f'{symbol_count}symbol_overall.npy', overall_sig)
 
-output_file = 'onesymbol_audio_to_test_with.wav'
+output_file = f'{symbol_count}symbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")

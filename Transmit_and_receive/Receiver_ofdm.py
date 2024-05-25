@@ -6,55 +6,40 @@ from scipy.signal import chirp, correlate
 from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
-
-datachunk_len = 4096                        # length of the data in the OFDM symbol
-prefix_len = 512                           # length of cyclic prefix
-symbol_len = datachunk_len + prefix_len     # total length of symbol
-lower_freq = 1000                           # lower frequency used for data
-upper_freq = 11000                          # upper frequency used for data
-sample_rate = 44100                         # samples per second
-rec_duration = 7                            # duration of recording in seconds
-chirp_duration = 5                          # duration of chirp in seconds
-chirp_start_freq = 0.01                     # chirp start freq
-chirp_end_freq = 22050                      # chirp end freq
-chirp_type = "linear"                       # chirp type
-recording_data_len = 4608                  # number of samples of data (HOW IS THIS FOUND)
-lower_bin = 85
-upper_bin = 850
+import parameters
 
 
-start = 1
-r = 0.99
-noise_std = 0.05
-simulated_channel = start * r**np.arange(prefix_len) + np.random.normal(0, noise_std, prefix_len)
-plt.plot(simulated_channel)
-plt.show()
-
+datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
+prefix_len = parameters.prefix_len                   # length of cyclic prefix
+symbol_len = parameters.symbol_len                   # total length of symbol
+sample_rate = parameters.sample_rate                 # samples per second
+rec_duration = parameters.rec_duration               # duration of recording in seconds
+chirp_duration = parameters.chirp_duration           # duration of chirp in seconds
+chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
+chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
+chirp_type = parameters.chirp_type                   # chirp type
+recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
+lower_bin = parameters.lower_bin
+upper_bin = parameters.upper_bin
+symbol_count = parameters.symbol_count
 
 # STEP 1: Generate transmitted chirp and record signal
-def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
-    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
-    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round down
-
-    # print(f"""
-    # for the parameters: sample rate = {sample_rate}Hz
-    #                     information bandlimited to {lower_freq} - {upper_freq}Hz
-    #                     OFDM symbol length = {ofdm_chunk_length}
-    #             lower bin is {lower_bin}
-    #             upper bin is {upper_bin}
-    # """)
-    return lower_bin, upper_bin
-
-# lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
-
 t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
 
 chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
 chirp_sig = list(chirp_sig)
 
-sent_signal = np.load('onesymbol_overall.npy')
-recording = np.convolve(sent_signal, simulated_channel, 'same')
+
+# Using real recording 
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+sd.wait()
+
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save(f"{symbol_count}symbol_recording_to_test_with.npy", recording)
+
+#  Using saved recording
+# recording = np.load("onesymbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -96,8 +81,7 @@ channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
 
 # channel impulse before resynchronisation
-plt.plot((channel_impulse))  
-plt.plot(channel_fft)
+plt.plot(abs(channel_impulse))  
 plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
@@ -176,12 +160,14 @@ channel_coefficients = fft(channel_impulse_full)
 
 plt.plot(abs(channel_impulse))
 plt.show()
+plt.plot(abs(channel_coefficients))
+plt.show()
 
 # STEP 4: crop audio file to the data
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load("mod_seq_onesymbol.npy")
+source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")
 print(len(source_mod_seq))
 
 
@@ -193,8 +179,13 @@ print(f"Num of OFDM symbols: {num_symbols}")
 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 
+sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
+sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
+sent_datachunk1 = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:][0]
+
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-ofdm_datachunks = ofdm_datachunks/channel_coefficients # Divide each value by its corrosponding channel fft coefficient. 
+channel_fft1 = ofdm_datachunks[0]/fft(sent_datachunk1)
+ofdm_datachunks = ofdm_datachunks/channel_fft1 # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 data = data.flatten()
