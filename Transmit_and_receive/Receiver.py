@@ -18,7 +18,7 @@ chirp_duration = 2                          # duration of chirp in seconds
 chirp_start_freq = 0.01                     # chirp start freq
 chirp_end_freq = 22050                      # chirp end freq
 chirp_type = "linear"                       # chirp type
-recording_data_len = 67584                  # number of samples of data (HOW IS THIS FOUND)
+recording_data_len = 331776                  # number of samples of data (HOW IS THIS FOUND)
 
 # STEP 1: Generate transmitted chirp and record signal
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
