@@ -14,11 +14,13 @@ lower_freq = 1000                           # lower frequency used for data
 upper_freq = 11000                          # upper frequency used for data
 sample_rate = 44100                         # samples per second
 rec_duration = 6                            # duration of recording in seconds
-chirp_duration = 2                          # duration of chirp in seconds
+chirp_duration = 5                          # duration of chirp in seconds
 chirp_start_freq = 0.01                     # chirp start freq
 chirp_end_freq = 22050                      # chirp end freq
 chirp_type = "linear"                       # chirp type
-recording_data_len = 331776                  # number of samples of data (HOW IS THIS FOUND)
+recording_data_len = 4608                  # number of samples of data (HOW IS THIS FOUND)
+lower_bin = 85
+upper_bin = 850
 
 # STEP 1: Generate transmitted chirp and record signal
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
@@ -34,7 +36,7 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
     # """)
     return lower_bin, upper_bin
 
-lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
+# lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
 
 t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
@@ -44,14 +46,14 @@ chirp_sig = list(chirp_sig)
 
 
 # Using real recording 
-# recording = sd.rec(sample_rate*duration, samplerate=sample_rate, channels=1, dtype='int16')
-# sd.wait()
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float64')
+sd.wait()
 
 # recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save("rep_recording_to_test_with.npy", recording)
+np.save("onesymbol_recording_to_test_with.npy", recording)
 
 # Using saved recording
-recording = np.load("rep_recording_to_test_with.npy")
+# recording = np.load("rep_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 

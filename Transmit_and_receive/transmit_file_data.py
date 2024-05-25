@@ -48,6 +48,7 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
+print(len(modulated_sequence))
 np.save("mod_seq_onesymbol.npy", modulated_sequence)
 
 # STEP 2.5: function for calculating bin values (optional)
@@ -73,13 +74,16 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # append with 0s if not modulated_sequence is not multiple of num_information_bins
     num_zeros = num_information_bins - (len(modulated_sequence) % num_information_bins)
+    print(num_zeros)
 
-    if num_zeros != 0:
+    if num_zeros != num_information_bins:
         zero_block = np.zeros(num_zeros, dtype=complex)
         modulated_sequence = np.append(modulated_sequence, zero_block)
-
+    print(len(modulated_sequence))
     # create new array containing modulated_sequence, where each row corresponds to an OFDM data chunk
-    separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins))  
+    separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
+    # separated_mod_sequence = np.array(np.array_split(modulated_sequence, 5))
+    print(f"yo {separated_mod_sequence.shape}") 
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
@@ -92,6 +96,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
+print(ofdm_datachunks.shape)
 
 # STEP 4: IDFT each OFDM symbol
 time_domain_datachunks = ifft(ofdm_datachunks, axis=1)  # applies ifft to each row
@@ -126,7 +131,7 @@ start_sig = [0]*sample_rate  # 1 second silence
 start_freq = 0.01
 end_freq = 22050
 chirp_type = "linear" 
-cyclic_prefix = 512
+cyclic_prefix = prefix_len
 
 t = np.linspace(0, chirp_duration, int(chirp_duration*sample_rate))  # time-values for chirp
 chirp_sig = chirp(t, f0=start_freq, f1=end_freq, t1=chirp_duration, method=chirp_type)
@@ -141,8 +146,8 @@ overall_sig = start_sig + chirp_w_prefix_suffix + list(waveform)
 print(len(waveform))
 
 # Play the audio data
-sd.play(overall_sig, sample_rate)
-sd.wait()  # Wait until the sound has finished playing
+# sd.play(overall_sig, sample_rate)
+# sd.wait()  # Wait until the sound has finished playing
 
 output_file = 'onesymbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
