@@ -208,9 +208,7 @@ plt.scatter(data.real, data.imag, c=colors)
 plt.show()
 
 
-# step 4: take the DFT
-# step 5: divide by channel coefficients determined in step 1
-# step 6: choose complex values corresponding to information bits
-# step 7: map each value to bits using QPSK decision regions
+
+# step 6: map each value to bits using QPSK decision regions
 # step 8: decode recieved bits to information bits
 # step 9: convert information bits to file using standardised preamble.

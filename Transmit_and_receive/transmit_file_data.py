@@ -6,16 +6,18 @@ from scipy.signal import chirp
 
 # STEP 1: encode file as binary data (e.g. LDPC)
 
-prefix_len = 1024           # cyclic prefix length
-datachunk_len = 2048        # length of data  
+prefix_len = 512           # cyclic prefix length
+datachunk_len = 4096        # length of data  
 lower_freq = 1000           # lower frequency used for data
 upper_freq = 11000          # upper frequency used for data
 sample_rate = 44100         # sample rate 
 repetition_factor = 5       # WHAT IS THIS?
+lower_bin = 85
+upper_bin = 850
 
 # WHAT IS THE REPETITION?
-coded_info_sequence = np.load("binary_data.npy")
-rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
+coded_info_sequence = np.load("binary_data.npy")[:1532]
+# rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
@@ -45,8 +47,8 @@ def qpsk_modulator(binary_sequence):
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence
 
-modulated_sequence = qpsk_modulator(rep_sequence) 
-np.save("rep_mod_seq.npy", modulated_sequence)
+modulated_sequence = qpsk_modulator(coded_info_sequence) 
+np.save("mod_seq_onesymbol.npy", modulated_sequence)
 
 # STEP 2.5: function for calculating bin values (optional)
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
@@ -62,7 +64,7 @@ def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
     """)
     return lower_bin, upper_bin
 
-lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
+# lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -134,14 +136,15 @@ chirp_prefix = chirp_sig[-cyclic_prefix:]
 chirp_suffix = chirp_sig[:cyclic_prefix]
 chirp_w_prefix_suffix = chirp_prefix + chirp_sig + chirp_suffix
 
-rep_waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
-overall_sig = start_sig + chirp_w_prefix_suffix + list(rep_waveform)
+waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
+overall_sig = start_sig + chirp_w_prefix_suffix + list(waveform)
+print(len(waveform))
 
 # Play the audio data
 sd.play(overall_sig, sample_rate)
 sd.wait()  # Wait until the sound has finished playing
 
-output_file = 'rep_audio_to_test_with.wav'
+output_file = 'onesymbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")
