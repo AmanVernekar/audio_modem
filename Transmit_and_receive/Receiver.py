@@ -10,8 +10,6 @@ from scipy.ndimage import gaussian_filter1d
 datachunk_len = 4096                        # length of the data in the OFDM symbol
 prefix_len = 512                           # length of cyclic prefix
 symbol_len = datachunk_len + prefix_len     # total length of symbol
-lower_freq = 1000                           # lower frequency used for data
-upper_freq = 11000                          # upper frequency used for data
 sample_rate = 44100                         # samples per second
 rec_duration = 7                            # duration of recording in seconds
 chirp_duration = 5                          # duration of chirp in seconds
@@ -46,14 +44,14 @@ chirp_sig = list(chirp_sig)
 
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float64')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+# sd.wait()
 
 # recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save("onesymbol_recording_to_test_with.npy", recording)
+# np.save("onesymbol_recording_to_test_with.npy", recording)
 
-# Using saved recording
-# recording = np.load("rep_recording_to_test_with.npy")
+#  Using saved recording
+recording = np.load("onesymbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -174,12 +172,14 @@ channel_coefficients = fft(channel_impulse_full)
 
 plt.plot(abs(channel_impulse))
 plt.show()
+plt.plot(abs(channel_coefficients))
+plt.show()
 
 # STEP 4: crop audio file to the data
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load("rep_mod_seq.npy")
+source_mod_seq = np.load("mod_seq_onesymbol.npy")
 print(len(source_mod_seq))
 
 
