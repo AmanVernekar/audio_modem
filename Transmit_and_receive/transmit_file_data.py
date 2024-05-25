@@ -4,16 +4,18 @@ import sounddevice as sd
 import soundfile as sf
 from scipy.signal import chirp
 
+import parameters
+
 # STEP 1: encode file as binary data (e.g. LDPC)
 
-prefix_len = 512           # cyclic prefix length
-datachunk_len = 4096        # length of data  
-lower_freq = 1000           # lower frequency used for data
-upper_freq = 11000          # upper frequency used for data
-sample_rate = 44100         # sample rate 
+prefix_len = parameters.prefix_len         # cyclic prefix length
+datachunk_len = parameters.datachunk_len        # length of data  
+lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
+upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
+sample_rate = parameters.sample_rate        # sample rate 
 repetition_factor = 5       # WHAT IS THIS?
-lower_bin = 85
-upper_bin = 850
+lower_bin = parameters.lower_bin
+upper_bin = parameters.upper_bin
 
 # WHAT IS THE REPETITION?
 coded_info_sequence = np.load("binary_data.npy")[:1532]
@@ -50,22 +52,6 @@ def qpsk_modulator(binary_sequence):
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 print(len(modulated_sequence))
 np.save("mod_seq_onesymbol.npy", modulated_sequence)
-
-# STEP 2.5: function for calculating bin values (optional)
-def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
-    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
-    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round down
-
-    print(f"""
-    for the parameters: sample rate = {sample_rate}Hz
-                        information bandlimited to {lower_freq} - {upper_freq}Hz
-                        OFDM symbol length = {ofdm_chunk_length}
-                lower bin is {lower_bin}
-                upper bin is {upper_bin}
-    """)
-    return lower_bin, upper_bin
-
-# lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -126,11 +112,11 @@ def convert_data_to_audio(data, sampling_rate):
     return waveform 
 
 # Chirp Parameters
-chirp_duration = 5  # seconds
+chirp_duration = parameters.chirp_duration  # seconds
 start_sig = [0]*sample_rate  # 1 second silence
-start_freq = 0.01
-end_freq = 22050
-chirp_type = "linear" 
+start_freq = parameters.chirp_start_freq
+end_freq = parameters.chirp_end_freq
+chirp_type = parameters.chirp_type
 cyclic_prefix = prefix_len
 
 t = np.linspace(0, chirp_duration, int(chirp_duration*sample_rate))  # time-values for chirp

@@ -6,38 +6,23 @@ from scipy.signal import chirp, correlate
 from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
+import parameters
 
-datachunk_len = 4096                        # length of the data in the OFDM symbol
-prefix_len = 512                           # length of cyclic prefix
-symbol_len = datachunk_len + prefix_len     # total length of symbol
-lower_freq = 1000                           # lower frequency used for data
-upper_freq = 11000                          # upper frequency used for data
-sample_rate = 44100                         # samples per second
-rec_duration = 7                            # duration of recording in seconds
-chirp_duration = 5                          # duration of chirp in seconds
-chirp_start_freq = 0.01                     # chirp start freq
-chirp_end_freq = 22050                      # chirp end freq
-chirp_type = "linear"                       # chirp type
-recording_data_len = 4608                  # number of samples of data (HOW IS THIS FOUND)
-lower_bin = 85
-upper_bin = 850
+
+datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
+prefix_len = parameters.prefix_len                   # length of cyclic prefix
+symbol_len = parameters.symbol_len                   # total length of symbol
+sample_rate = parameters.sample_rate                 # samples per second
+rec_duration = parameters.rec_duration               # duration of recording in seconds
+chirp_duration = parameters.chirp_duration           # duration of chirp in seconds
+chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
+chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
+chirp_type = parameters.chirp_type                   # chirp type
+recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
+lower_bin = parameters.lower_bin
+upper_bin = parameters.upper_bin
 
 # STEP 1: Generate transmitted chirp and record signal
-def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
-    lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
-    upper_bin = np.floor((upper_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round down
-
-    # print(f"""
-    # for the parameters: sample rate = {sample_rate}Hz
-    #                     information bandlimited to {lower_freq} - {upper_freq}Hz
-    #                     OFDM symbol length = {ofdm_chunk_length}
-    #             lower bin is {lower_bin}
-    #             upper bin is {upper_bin}
-    # """)
-    return lower_bin, upper_bin
-
-# lower_bin, upper_bin = calculate_bins(sample_rate, lower_freq, upper_freq, datachunk_len)
-
 t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
 t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
 
@@ -46,14 +31,14 @@ chirp_sig = list(chirp_sig)
 
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float64')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+# sd.wait()
 
 # recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save("onesymbol_recording_to_test_with.npy", recording)
+# np.save("onesymbol_recording_to_test_with.npy", recording)
 
-# Using saved recording
-# recording = np.load("rep_recording_to_test_with.npy")
+#  Using saved recording
+recording = np.load("onesymbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -174,12 +159,14 @@ channel_coefficients = fft(channel_impulse_full)
 
 plt.plot(abs(channel_impulse))
 plt.show()
+plt.plot(abs(channel_coefficients))
+plt.show()
 
 # STEP 4: crop audio file to the data
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load("rep_mod_seq.npy")
+source_mod_seq = np.load("mod_seq_onesymbol.npy")
 print(len(source_mod_seq))
 
 
