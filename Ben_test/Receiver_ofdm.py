@@ -7,6 +7,8 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 import parameters
+import our_chirp
+
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
 prefix_len = parameters.prefix_len                   # length of cyclic prefix
@@ -20,25 +22,20 @@ chirp_type = parameters.chirp_type                   # chirp type
 recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
-
-
-start = 1
-r = 0.99
-noise_std = 0.05
-simulated_channel = start * r**np.arange(prefix_len) # + np.random.normal(0, noise_std, prefix_len)
-plt.plot(simulated_channel)
-plt.show()
-
+symbol_count = parameters.symbol_count
 
 # STEP 1: Generate transmitted chirp and record signal
-t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
-t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
+chirp_sig = our_chirp.chirp_sig
 
-chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
-chirp_sig = list(chirp_sig)
+# Using real recording 
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+# sd.wait()
 
-sent_signal = np.load('onesymbol_overall.npy')
-recording = np.convolve(sent_signal, simulated_channel, 'full')
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"{symbol_count}symbol_recording_to_test_with.npy", recording)
+
+#  Using saved recording
+recording = np.load(f"{symbol_count}symbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -49,39 +46,27 @@ matched_filter_output = correlate(recording, chirp_sig, mode='full')
 # Create plots of the recording and matched filter response note that the x axes are different. 
 t_rec = np.arange(0, len(recording))
 t_mat = np.arange(0, len(matched_filter_output))
-fig, (ax1, ax2) = plt.subplots(2, 1)
+# fig, (ax1, ax2) = plt.subplots(2, 1)
 
-ax1.plot(t_rec, recording, label='Recording', color='b')
-ax1.set_xlabel('X-axis 1')
-ax1.set_ylabel('Y-axis 1')
-ax1.legend()
-ax1.set_title('First Plot')
+# ax1.plot(t_rec, recording, label='Recording', color='b')
+# ax1.set_xlabel('X-axis 1')
+# ax1.set_ylabel('Y-axis 1')
+# ax1.legend()
+# ax1.set_title('First Plot')
 
-ax2.plot(t_mat, matched_filter_output, label='Matched filter output', color='r')
-ax2.set_xlabel('X-axis 2')
-ax2.set_ylabel('Y-axis 2')
-ax2.legend()
-ax2.set_title('Second Plot')
+# ax2.plot(t_mat, matched_filter_output, label='Matched filter output', color='r')
+# ax2.set_xlabel('X-axis 2')
+# ax2.set_ylabel('Y-axis 2')
+# ax2.legend()
+# ax2.set_title('Second Plot')
 
-plt.tight_layout()
+# plt.tight_layout()
 
 # plt.plot(abs(matched_filter_output))
-plt.show()
+# plt.show()
 
 detected_index = np.argmax(matched_filter_output)
-
-# !!! Synchronisation testing
-start_of_chirp = 0
-for index, value in enumerate(sent_signal):
-    if value != 0:
-        start_of_chirp = index + prefix_len
-        print(f"Actual start of the chirp is at index {start_of_chirp}")
-        break
-
-# print(f"The peak of the matched filter occurs at index {detected_index}")
-beginning_index = detected_index - int(sample_rate*chirp_duration)
-print(f"Detected start of the chirp occurs at index {beginning_index}")
-print(f"Synchronisation error =  {start_of_chirp} - {beginning_index} = {start_of_chirp - beginning_index} samples")
+print(detected_index)
 
 # Use matched filter to take out the chirp from the recording
 chirp_fft = fft(chirp_sig)
@@ -92,9 +77,8 @@ channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
 
 # channel impulse before resynchronisation
-plt.plot((channel_impulse))  
-plt.plot(channel_fft)
-plt.show()
+# plt.plot(abs(channel_impulse))  
+# plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
 # functions to choose the start of the impulse
@@ -158,6 +142,7 @@ def impulse_start_guassian(channel_impulse):
     print("Smoothed Data: ", smoothed_data)
 
 impulse_shift = impulse_start_max(channel_impulse)
+# impulse_shift = 0
 
 #Recalculate the section of chirp we want
 detected_chirp = recording[detected_index-n+impulse_shift:detected_index+impulse_shift]
@@ -170,66 +155,85 @@ channel_impulse_cut = channel_impulse[:prefix_len]
 channel_impulse_full = list(channel_impulse_cut) + [0]*int(datachunk_len-prefix_len) # zero pad to datachunk length
 channel_coefficients = fft(channel_impulse_full)
 
-plt.plot(abs(channel_impulse))
-plt.show()
+# plt.plot(abs(channel_impulse))
+# plt.show()
+# plt.plot(abs(channel_coefficients))
+# plt.show()
 
-# !!! Channel response testing
-# Look at impulse response
-def channel_impulse_test():
-    length_simulated_channel = len(simulated_channel)
-    calculated_channel_impulse = channel_impulse_full[:length_simulated_channel]
-    freq_domain = fft(simulated_channel)
-    # freq_domain[:lower_bin] = 0  # windowing
-    # freq_domain[upper_bin+1:] = 0  # windowing
-    # bandlimited_simulated_channel = ifft(freq_domain)
-    squared_error = np.sum((simulated_channel - calculated_channel_impulse).real ** 2)
-
-    plt.figure()
-    plt.plot(simulated_channel, label='Simulated Channel', color='blue')
-    plt.plot(calculated_channel_impulse, label='Calculated Channel Impulse', color='orange')
-    # plt.plot(bandlimited_simulated_channel, label='Bandlimited Channel Impulse', color='green')
-    plt.title('Simulated Channel vs Calculated Channel Impulse')
-    plt.xlabel('Sample Index')
-    plt.ylabel('Amplitude')
-    plt.legend()
-    plt.text(0.05, 0.95, f'Total Squared Error: {squared_error:.7f}', transform=plt.gca().transAxes, verticalalignment='top')
-    plt.show()
-
-channel_impulse_test()
-
-# Look at channel coefficients
+# STEP 4: crop audio file to the data
+data_start_index = detected_index+impulse_shift
+recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+# load in the file sent to test against
+source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")[5*(upper_bin-lower_bin+1):]#5*(upper_bin-lower_bin+1)]
+print(len(source_mod_seq))
 
 
-# # STEP 4: crop audio file to the data
-# data_start_index = detected_index+impulse_shift
-# recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
-# # load in the file sent to test against
-# source_mod_seq = np.load("mod_seq_onesymbol.npy")
-# print(len(source_mod_seq))
+# STEP 5: cut into different blocks and get rid of cyclic prefix
 
+num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
 
-# # STEP 5: cut into different blocks and get rid of cyclic prefix
+print(f"Num of OFDM symbols: {num_symbols}")
 
-# num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]#[:5]
 
-# print(f"Num of OFDM symbols: {num_symbols}")
+sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
+sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
+sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
-# time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+# channel_fft1 = ofdm_datachunks[0]/fft(sent_datachunk1)
 
-# ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-# ofdm_datachunks = ofdm_datachunks/channel_coefficients # Divide each value by its corrosponding channel fft coefficient. 
-# data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+def estimate_channel_from_known_ofdm(num_known_symbols):
+    channel_estimates = np.zeros((num_known_symbols, datachunk_len), dtype='complex')
+    for i in range(num_known_symbols):
+        channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
+        channel_estimates[i] = channel_fft
+    
+    average_channel_estimate = np.mean(channel_estimates, axis=0)
+    print(channel_estimates.shape)
+    print(average_channel_estimate.shape)
+    return average_channel_estimate
 
-# data = data.flatten()
+channel_estimate = estimate_channel_from_known_ofdm(5)
+
+ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+
+data = data.flatten()
 # data = data[:len(source_mod_seq)]  # as the binary data isn't an exact multiple of 511*2 we have zero padded this gets rid of zeros
 
-# # makes list of colours corresponding to the original modulated data
-# colors = np.where(source_mod_seq == 1+1j, "b", 
-#             np.where(source_mod_seq == -1+1j, "c", 
-#             np.where(source_mod_seq == -1-1j, "m", 
-#             np.where(source_mod_seq == 1-1j, "y", 
+# makes list of colours corresponding to the original modulated data
+colors = np.where(source_mod_seq == 1+1j, "b", 
+            np.where(source_mod_seq == -1+1j, "c", 
+            np.where(source_mod_seq == -1-1j, "m", 
+            np.where(source_mod_seq == 1-1j, "y", 
+            "Error"))))
+
+# plots the received data with colour corresponding to the sent data. 
+plt.scatter(data.real, data.imag, c=colors)
+plt.axvline(0)
+plt.axhline(0)
+plt.show()
+
+
+
+# step 6: map each value to bits using QPSK decision regions
+# step 8: decode recieved bits to information bits
+# step 9: convert information bits to file using standardised preamble.
+
+# recovered_values = np.where(data.real >= 0 and data.imag >= 0, 1+1j, 
+#             np.where(data.real < 0 and data.imag >= 0, -1+1j, 
+#             np.where(data.real < 0 and data.imag < 0, -1-1j, 
+#             np.where(data.real >= 0 and data.imag < 0, 1-1j, 
 #             "Error"))))
 
-# # plots the received data with colour corresponding to the sent data. 
-# plt.scatter(data.real, data.imag, c=colors)
-# plt.show()
+# errors = np.count_nonzero(recovered_values-source_mod_seq)
+# print(errors/len(recovered_values))
+
+errors = 0
+for i, val in enumerate(data):
+    sent = source_mod_seq[i]
+    if val.real/sent.real < 0 or val.imag/sent.imag < 0:
+        errors = errors + 1
+
+print(errors/len(data))

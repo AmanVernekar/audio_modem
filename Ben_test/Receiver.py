@@ -7,6 +7,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 import parameters
+import our_chirp
 
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
@@ -21,25 +22,19 @@ chirp_type = parameters.chirp_type                   # chirp type
 recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
-symbol_count = parameters.symbol_count
 
 # STEP 1: Generate transmitted chirp and record signal
-t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
-t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
-
-chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
-chirp_sig = list(chirp_sig)
-
+chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
 # recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
 # sd.wait()
 
 # recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"{symbol_count}symbol_recording_to_test_with.npy", recording)
+# np.save("onesymbol_recording_to_test_with.npy", recording)
 
 #  Using saved recording
-recording = np.load(f"{symbol_count}symbol_recording_to_test_with.npy")
+recording = np.load("onesymbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -146,7 +141,6 @@ def impulse_start_guassian(channel_impulse):
     print("Smoothed Data: ", smoothed_data)
 
 impulse_shift = impulse_start_max(channel_impulse)
-# impulse_shift = 0
 
 #Recalculate the section of chirp we want
 detected_chirp = recording[detected_index-n+impulse_shift:detected_index+impulse_shift]
@@ -168,7 +162,7 @@ plt.show()
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")[5*766:]
+source_mod_seq = np.load("mod_seq_onesymbol.npy")
 print(len(source_mod_seq))
 
 
@@ -180,26 +174,8 @@ print(f"Num of OFDM symbols: {num_symbols}")
 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 
-sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
-sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
-sent_datachunk1 = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:][0]
-
-sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
-
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-
-def estimate_channel_from_known_ofdm(num_known_symbols):
-    channel_estimates = np.zeros((num_known_symbols, datachunk_len))
-    for i in range(num_known_symbols):
-        channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
-        channel_estimates[i] = channel_fft
-    
-    average_channel_estimate = np.mean(channel_estimates)
-    return average_channel_estimate
-
-channel_estimate = estimate_channel_from_known_ofdm(5)
-
-ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+ofdm_datachunks = ofdm_datachunks/channel_coefficients # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 data = data.flatten()
@@ -214,8 +190,6 @@ colors = np.where(source_mod_seq == 1+1j, "b",
 
 # plots the received data with colour corresponding to the sent data. 
 plt.scatter(data.real, data.imag, c=colors)
-plt.axvline(0)
-plt.axhline(0)
 plt.show()
 
 
@@ -223,20 +197,3 @@ plt.show()
 # step 6: map each value to bits using QPSK decision regions
 # step 8: decode recieved bits to information bits
 # step 9: convert information bits to file using standardised preamble.
-
-# recovered_values = np.where(data.real >= 0 and data.imag >= 0, 1+1j, 
-#             np.where(data.real < 0 and data.imag >= 0, -1+1j, 
-#             np.where(data.real < 0 and data.imag < 0, -1-1j, 
-#             np.where(data.real >= 0 and data.imag < 0, 1-1j, 
-#             "Error"))))
-
-# errors = np.count_nonzero(recovered_values-source_mod_seq)
-# print(errors/len(recovered_values))
-
-errors = 0
-for i, val in enumerate(data):
-    sent = source_mod_seq[i]
-    if val.real/sent.real < 0 or val.imag/sent.imag < 0:
-        errors = errors + 1
-
-print(errors/len(data))
