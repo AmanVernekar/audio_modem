@@ -30,14 +30,14 @@ num_known_symbols = 1
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
-# sd.wait()
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+sd.wait()
 
-# recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_1.npy", recording)
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_1.npy", recording)
 
 #  Using saved recording
-recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy")
+# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
