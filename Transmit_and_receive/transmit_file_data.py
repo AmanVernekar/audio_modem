@@ -54,7 +54,7 @@ def qpsk_modulator(binary_sequence):
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 print(len(modulated_sequence))
-np.save(f"mod_seq_{symbol_count}symbols.npy", modulated_sequence)
+np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -125,9 +125,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'{symbol_count}symbol_overall.npy', overall_sig)
+np.save(f'Data_files/{symbol_count}symbol_overall.npy', overall_sig)
 
-output_file = f'{symbol_count}symbol_audio_to_test_with.wav'
+output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")

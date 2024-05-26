@@ -6,23 +6,23 @@ from scipy.signal import chirp, correlate
 from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
+import parameters
 
-datachunk_len = 4096                        # length of the data in the OFDM symbol
-prefix_len = 512                            # length of cyclic prefix
-symbol_len = datachunk_len + prefix_len     # total length of symbol
-lower_freq = 1000                           # lower frequency used for data
-upper_freq = 11000                          # upper frequency used for data
-sample_rate = 44100                         # samples per second
-rec_duration = 7                            # duration of recording in seconds
-chirp_duration = 5                          # duration of chirp in seconds
-chirp_start_freq = 1                        # chirp start freq
-chirp_end_freq = 22050                      # chirp end freq
-chirp_type = "linear"                       # chirp type
-recording_data_len = 46080                  # number of samples of data (HOW IS THIS FOUND)
-lower_bin = 85
-upper_bin = 850
-known_data_start = sample_rate + prefix_len
-print(known_data_start)
+datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
+prefix_len = parameters.prefix_len                   # length of cyclic prefix
+symbol_len = parameters.symbol_len                   # total length of symbol
+sample_rate = parameters.sample_rate                 # samples per second
+rec_duration = parameters.rec_duration               # duration of recording in seconds
+chirp_duration = parameters.chirp_duration           # duration of chirp in seconds
+chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
+chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
+chirp_type = parameters.chirp_type                   # chirp type
+recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
+lower_bin = parameters.lower_bin
+upper_bin = parameters.upper_bin
+symbol_count = parameters.symbol_count
+
+known_chirp_start = sample_rate + prefix_len
 
 
 start = 1
@@ -47,7 +47,7 @@ t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endp
 chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
 chirp_sig = list(chirp_sig)
 
-sent_signal = np.load('sent_audio.npy')
+sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall.npy')
 noise_std = 0.05
 recording = np.convolve(sent_signal, simulated_channel, 'full')[:-prefix_len+1]
 # recording = recording_without_noise + np.random.normal(0, noise_std, len(recording_without_noise))
@@ -58,14 +58,14 @@ plt.show()
 
 # STEP 2: initially synchronise
 # Use matched filter to take out the chirp from the recording
-chirp_fft = fft(chirp_sig)[4500:50000]
+chirp_fft = fft(chirp_sig)#[4500:50000]
 
-# plt.plot(chirp_fft)
-# plt.title("fft of chirp")
-# plt.show()
+plt.plotabs((chirp_fft))
+plt.title("fft of chirp")
+plt.show()
 
 n = int(sample_rate*chirp_duration)   # number of samples of the chirp 
-detected_chirp = recording[known_data_start:known_data_start+n]
+detected_chirp = recording[known_chirp_start:known_chirp_start+n]
 
 plt.plot(detected_chirp)
 plt.title("Chirp from recording")
@@ -214,7 +214,7 @@ plt.plot(recording_without_chirp)
 plt.title("Rec of data")
 plt.show()
 # load in the file sent to test against
-source_mod_seq = np.load("mod_seq.npy")
+source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")
 print(len(source_mod_seq))
 
 
