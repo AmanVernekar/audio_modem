@@ -5,7 +5,7 @@ import soundfile as sf
 from scipy.signal import chirp
 
 import parameters
-import chirp
+import our_chirp
 
 # STEP 1: encode file as binary data (e.g. LDPC)
 
@@ -114,11 +114,11 @@ def convert_data_to_audio(data, sampling_rate):
     # np.save("rep_waveform.npy", waveform)
     return waveform 
 
-chirp_sig = chirp.chirp_sig
-chirp_w_prefix_suffix = chirp.chirp_w_prefix_suffix
+chirp_sig = our_chirp.chirp_sig
+chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
 
 waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
-overall_sig = chirp.start_sig + chirp_w_prefix_suffix + list(waveform)
+overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform)
 print(len(waveform))
 
 # Play the audio data

@@ -7,6 +7,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 import parameters
+import our_chirp
 
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
@@ -23,12 +24,7 @@ lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 
 # STEP 1: Generate transmitted chirp and record signal
-t_total = np.linspace(0, rec_duration, int(sample_rate * rec_duration), endpoint=False)
-t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endpoint=False)
-
-chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
-chirp_sig = list(chirp_sig)
-
+chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
 # recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
