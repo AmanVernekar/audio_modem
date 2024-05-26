@@ -21,6 +21,9 @@ recording_data_len = parameters.recording_data_len   # number of samples of data
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 symbol_count = parameters.symbol_count
+ch_sample_1 = parameters.ch_sample_1
+ch_sample_2 = parameters.ch_sample_2
+ch_len = parameters.ch_len
 
 known_chirp_start = sample_rate + prefix_len
 
@@ -47,7 +50,7 @@ t_chirp = np.linspace(0, chirp_duration, int(sample_rate * chirp_duration), endp
 chirp_sig = chirp(t_chirp, f0=chirp_start_freq, f1=chirp_end_freq, t1=chirp_duration, method=chirp_type)
 chirp_sig = list(chirp_sig)
 
-sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall.npy')
+sent_signal = np.load(f'Sophie_testing/{symbol_count}symbol_overall.npy')
 noise_std = 0.05
 recording = np.convolve(sent_signal, simulated_channel, 'full')[:-prefix_len+1]
 # recording = recording_without_noise + np.random.normal(0, noise_std, len(recording_without_noise))
@@ -58,9 +61,9 @@ plt.show()
 
 # STEP 2: initially synchronise
 # Use matched filter to take out the chirp from the recording
-chirp_fft = fft(chirp_sig)#[4500:50000]
+chirp_fft = fft(chirp_sig)
 
-plt.plotabs((chirp_fft))
+plt.plot(abs(chirp_fft))
 plt.title("fft of chirp")
 plt.show()
 
@@ -77,12 +80,24 @@ plt.show()
 # plt.title("FFT of detected chirp")
 # plt.show()
 
-detected_fft = fft(detected_chirp)[4500:50000]
-channel_coefficients = detected_fft/chirp_fft
+detected_fft = fft(detected_chirp)
+channel_coefficients = np.zeros((sample_rate*chirp_duration), dtype = complex)
+channel_coefficients[ch_sample_1:ch_sample_2+1] = detected_fft[ch_sample_1:ch_sample_2+1]/chirp_fft[ch_sample_1:ch_sample_2+1]
+channel_coefficients[ch_len-ch_sample_2:ch_len-ch_sample_1+1] = detected_fft[ch_len-ch_sample_2:ch_len-ch_sample_1+1]/chirp_fft[ch_len-ch_sample_2:ch_len-ch_sample_1+1]
+
+plt.plot(abs(detected_fft))
+plt.title("FFT of recorded chirp")
+plt.show() 
+
+# channel_coefficients = detected_fft/chirp_fft
 
 plt.plot(abs(channel_coefficients))
 plt.title("channel coefficents")
 plt.show()
+
+# th_element = ch_sample_2-ch_sample_1/datachunk_len
+# print(th_element)
+# channel_coefficients_section = channel_coefficients[::th_element]
 
 channel_impulse = ifft(channel_coefficients)
 
@@ -214,7 +229,7 @@ plt.plot(recording_without_chirp)
 plt.title("Rec of data")
 plt.show()
 # load in the file sent to test against
-source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")
+source_mod_seq = np.load(f"Sophie_testing/mod_seq_{symbol_count}symbols.npy")
 print(len(source_mod_seq))
 
 
