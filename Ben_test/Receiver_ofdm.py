@@ -196,6 +196,39 @@ def estimate_channel_from_known_ofdm(num_known_symbols):
 
 channel_estimate = estimate_channel_from_known_ofdm(5)
 
+def measure_phase_drift_for_one_frequency(first_ofdm_bin_value, second_ofdm_bin_value):
+    # Normalise each bin value
+    magn_first = np.abs(first_ofdm_bin_value)
+    magn_second = np.abs(second_ofdm_bin_value)
+
+    normalized_first = first_ofdm_bin_value / magn_first if magn_first != 0 else 0
+    normalized_second = second_ofdm_bin_value / magn_second if magn_second != 0 else 0
+
+    # If the first complex number is 0 (hopefully extremely unlikely), it sets phase coefficient to 1
+    # This should mean that there is no phase change
+    phase_coefficient = normalized_second / normalized_first if normalized_first != 0 else 1
+
+    return phase_coefficient
+
+def measure_phase_drift_between_datachunks(first_ofdm_datachunk, second_ofdm_datachunk):
+    # Apply measure_phase_drift_for_one_frequency element-wise to the data chunks
+    vectorized_phase_drift = np.vectorize(measure_phase_drift_for_one_frequency)
+    phase_coefficients = vectorized_phase_drift(first_ofdm_datachunk, second_ofdm_datachunk)
+    
+    # for the purposes of testing, lets plot the phase change (anticlockwise) compared to frequency
+    phase_values_in_radians = np.angle(phase_coefficients)
+    frequency_bins = np.linspace(0, len(phase_values_in_radians))
+    plt.figure(figsize=(10, 6))
+    plt.plot(frequency_bins, phase_values_in_radians, marker='o')
+    plt.xlabel('Frequency Bin')
+    plt.ylabel('Phase (radians)')
+    plt.title('Phase Values in Radians for Each Frequency Bin')
+    plt.grid(True)
+    plt.show()
+
+    return phase_coefficients
+
+
 ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
