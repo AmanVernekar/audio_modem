@@ -24,20 +24,20 @@ lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 symbol_count = parameters.symbol_count
 num_data_bins = upper_bin-lower_bin+1
-num_known_symbols = 1
+num_known_symbols = 5
 
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+# sd.wait()
 
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_1.npy", recording)
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_1.npy", recording)
 
 #  Using saved recording
-# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy")
+recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_indoor.npy")
 
 # STEP 2: initially synchronise
 
@@ -166,7 +166,7 @@ channel_coefficients = fft(channel_impulse_full)
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy") # [num_known_symbols*num_data_bins:]
+source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
 print(len(source_mod_seq))
 
 
@@ -183,24 +183,22 @@ sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
-plt.plot(np.angle(channel_estimate))
-plt.show()
+# channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
 
-# def estimate_channel_from_known_ofdm(num_known_symbols):
-#     channel_estimates = np.zeros((num_known_symbols, datachunk_len), dtype='complex')
-#     for i in range(num_known_symbols):
-#         channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
-#         channel_estimates[i] = channel_fft
+def estimate_channel_from_known_ofdm(_num_known_symbols):
+    channel_estimates = np.zeros((_num_known_symbols, datachunk_len), dtype='complex')
+    for i in range(_num_known_symbols):
+        channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
+        channel_estimates[i] = channel_fft
     
-#     average_channel_estimate = np.mean(channel_estimates, axis=0)
-#     print(channel_estimates.shape)
-#     print(average_channel_estimate.shape)
-#     return average_channel_estimate
+    average_channel_estimate = np.mean(channel_estimates, axis=0)
+    print(channel_estimates.shape)
+    print(average_channel_estimate.shape)
+    return average_channel_estimate
 
-# channel_estimate = estimate_channel_from_known_ofdm(5)
+channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
 
-ofdm_datachunks = ofdm_datachunks/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 # data = data.flatten()
@@ -219,12 +217,13 @@ colors = np.where(source_mod_seq == 1+1j, "b", #"b"
 
 
 # for mask_col in ["b", "c", "m", "y"]:
-mask_col = "b"
+# mask_col = "b"
 fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(20, 8))
 # Generate and plot data for each subplot
 for i in range(2):
     for j in range(5):
         # Generate random data
+        # index = 10*(i*5 + j) + 9
         index = i*5 + j
         _data = data[index]
         x = _data.real
@@ -233,8 +232,8 @@ for i in range(2):
         _source_mod_seq = source_mod_seq[index*num_data_bins:(index+1)*num_data_bins]
         # Plot on the corresponding subplot
         ax = axes[i, j]
-        ax.scatter(x[_colors==mask_col], y[_colors==mask_col], c = _colors[_colors==mask_col])
-        # ax.scatter(x, y, c = _colors)
+        # ax.scatter(x[_colors==mask_col], y[_colors==mask_col], c = _colors[_colors==mask_col])
+        ax.scatter(x, y, c = _colors)
         ax.axvline(0)
         ax.axhline(0)
         ax.set_xlim((-50,50))
@@ -255,12 +254,9 @@ plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
 
 
-
-
-
-# plots the received data with colour corresponding to the sent data. 
 # plt.scatter(data.real, data.imag, c=colors)
-
+# plt.axvline(0)
+# plt.axhline(0)
 # plt.show()
 
 
