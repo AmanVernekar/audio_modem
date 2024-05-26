@@ -184,6 +184,8 @@ sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, 
 
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
+plt.plot(np.angle(channel_estimate))
+plt.show()
 
 # def estimate_channel_from_known_ofdm(num_known_symbols):
 #     channel_estimates = np.zeros((num_known_symbols, datachunk_len), dtype='complex')
