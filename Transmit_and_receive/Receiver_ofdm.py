@@ -50,24 +50,24 @@ matched_filter_output = correlate(recording, chirp_sig, mode='full')
 # Create plots of the recording and matched filter response note that the x axes are different. 
 t_rec = np.arange(0, len(recording))
 t_mat = np.arange(0, len(matched_filter_output))
-fig, (ax1, ax2) = plt.subplots(2, 1)
+# fig, (ax1, ax2) = plt.subplots(2, 1)
 
-ax1.plot(t_rec, recording, label='Recording', color='b')
-ax1.set_xlabel('X-axis 1')
-ax1.set_ylabel('Y-axis 1')
-ax1.legend()
-ax1.set_title('First Plot')
+# ax1.plot(t_rec, recording, label='Recording', color='b')
+# ax1.set_xlabel('X-axis 1')
+# ax1.set_ylabel('Y-axis 1')
+# ax1.legend()
+# ax1.set_title('First Plot')
 
-ax2.plot(t_mat, matched_filter_output, label='Matched filter output', color='r')
-ax2.set_xlabel('X-axis 2')
-ax2.set_ylabel('Y-axis 2')
-ax2.legend()
-ax2.set_title('Second Plot')
+# ax2.plot(t_mat, matched_filter_output, label='Matched filter output', color='r')
+# ax2.set_xlabel('X-axis 2')
+# ax2.set_ylabel('Y-axis 2')
+# ax2.legend()
+# ax2.set_title('Second Plot')
 
-plt.tight_layout()
+# plt.tight_layout()
 
 # plt.plot(abs(matched_filter_output))
-plt.show()
+# plt.show()
 
 detected_index = np.argmax(matched_filter_output)
 print(detected_index)
@@ -81,8 +81,8 @@ channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
 
 # channel impulse before resynchronisation
-plt.plot(abs(channel_impulse))  
-plt.show()
+# plt.plot(abs(channel_impulse))  
+# plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
 # functions to choose the start of the impulse
@@ -159,16 +159,16 @@ channel_impulse_cut = channel_impulse[:prefix_len]
 channel_impulse_full = list(channel_impulse_cut) + [0]*int(datachunk_len-prefix_len) # zero pad to datachunk length
 channel_coefficients = fft(channel_impulse_full)
 
-plt.plot(abs(channel_impulse))
-plt.show()
-plt.plot(abs(channel_coefficients))
-plt.show()
+# plt.plot(abs(channel_impulse))
+# plt.show()
+# plt.plot(abs(channel_coefficients))
+# plt.show()
 
 # STEP 4: crop audio file to the data
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")
+source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")[5*(upper_bin-lower_bin+1):]#5*(upper_bin-lower_bin+1)]
 print(len(source_mod_seq))
 
 
@@ -178,19 +178,33 @@ num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 
 print(f"Num of OFDM symbols: {num_symbols}")
 
-time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:][:5]
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]#[:5]
 
 sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
-sent_datachunk1 = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:][0]
+sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-channel_fft1 = ofdm_datachunks[0]/fft(sent_datachunk1)
-ofdm_datachunks = ofdm_datachunks/channel_fft1 # Divide each value by its corrosponding channel fft coefficient. 
+# channel_fft1 = ofdm_datachunks[0]/fft(sent_datachunk1)
+
+def estimate_channel_from_known_ofdm(num_known_symbols):
+    channel_estimates = np.zeros((num_known_symbols, datachunk_len), dtype='complex')
+    for i in range(num_known_symbols):
+        channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
+        channel_estimates[i] = channel_fft
+    
+    average_channel_estimate = np.mean(channel_estimates, axis=0)
+    print(channel_estimates.shape)
+    print(average_channel_estimate.shape)
+    return average_channel_estimate
+
+channel_estimate = estimate_channel_from_known_ofdm(5)
+
+ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 data = data.flatten()
-data = data[:len(source_mod_seq)]  # as the binary data isn't an exact multiple of 511*2 we have zero padded this gets rid of zeros
+# data = data[:len(source_mod_seq)]  # as the binary data isn't an exact multiple of 511*2 we have zero padded this gets rid of zeros
 
 # makes list of colours corresponding to the original modulated data
 colors = np.where(source_mod_seq == 1+1j, "b", 
