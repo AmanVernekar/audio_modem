@@ -168,7 +168,7 @@ plt.show()
 data_start_index = detected_index+impulse_shift
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
-source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")
+source_mod_seq = np.load(f"mod_seq_{symbol_count}symbols.npy")[5*766:]
 print(len(source_mod_seq))
 
 
@@ -178,7 +178,7 @@ num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 
 print(f"Num of OFDM symbols: {num_symbols}")
 
-time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:][:5]
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 
 sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
@@ -199,7 +199,7 @@ def estimate_channel_from_known_ofdm(num_known_symbols):
 
 channel_estimate = estimate_channel_from_known_ofdm(5)
 
-ofdm_datachunks = ofdm_datachunks/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 data = data.flatten()
