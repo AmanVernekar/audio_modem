@@ -30,7 +30,7 @@ num_known_symbols = 5
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
 sd.wait()
 
 recording = recording.flatten()  # Flatten to 1D array if necessary
