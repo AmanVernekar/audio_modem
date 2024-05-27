@@ -54,6 +54,7 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence * mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
+print(modulated_sequence)
 print(len(modulated_sequence))
 np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
