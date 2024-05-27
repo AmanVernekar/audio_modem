@@ -108,14 +108,14 @@ concatenated_blocks = ofdm_symbols.flatten()
 # STEP 7:convert to audio file to transmit across channel. add chirp beforehand etc.
 def convert_data_to_audio(data, sampling_rate):
     # normalise to between -1 and 1:
-    max_absolute_val = np.max(np.abs(data))
+    max_absolute_val = (1/0.9)*np.max(np.abs(data))
     waveform = data / max_absolute_val
 
     # play the waveform
     # sd.play(waveform, sampling_rate)
     # sd.wait()
     # np.save("rep_waveform.npy", waveform)
-    return data 
+    return waveform 
 
 chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
