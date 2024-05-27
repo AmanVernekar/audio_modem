@@ -208,11 +208,12 @@ data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 
 
 
 
+mult = 20
 
-colors = np.where(source_mod_seq == 1+1j, "b", #"b"
-            np.where(source_mod_seq == -1+1j, "c", #"c"
-            np.where(source_mod_seq == -1-1j, "m", #"m"
-            np.where(source_mod_seq == 1-1j, "y",  #"y"
+colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
+            np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
+            np.where(source_mod_seq == mult*(-1-1j), "m", #"m"
+            np.where(source_mod_seq == mult*(1-1j), "y",  #"y"
             "Error"))))
 
 
