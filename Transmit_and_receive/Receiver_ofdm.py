@@ -30,14 +30,14 @@ num_known_symbols = 5
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
-# sd.wait()
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='int16')
+sd.wait()
 
-# recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_1.npy", recording)
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_indoor.npy")
+# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -178,7 +178,7 @@ print(f"Num of OFDM symbols: {num_symbols}")
 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 
-sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall.npy')
+sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 

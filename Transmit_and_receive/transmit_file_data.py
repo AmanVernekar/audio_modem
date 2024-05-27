@@ -76,7 +76,10 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
+    random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
     ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
+    ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
+    ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
 
     # insert information in OFDM blocks: 
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
@@ -125,9 +128,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'Data_files/{symbol_count}symbol_overall.npy', overall_sig)
+np.save(f'Data_files/{symbol_count}symbol_overall_w_noise.npy', overall_sig)
 
-output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with.wav'
+output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with_w_noise.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")
