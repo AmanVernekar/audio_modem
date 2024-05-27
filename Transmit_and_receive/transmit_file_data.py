@@ -26,6 +26,7 @@ coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
+    mult = 20
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -50,7 +51,7 @@ def qpsk_modulator(binary_sequence):
             modulated_sequence[i//2] = 1 - 1j
     
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
-    return modulated_sequence
+    return modulated_sequence*mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 print(len(modulated_sequence))
