@@ -26,6 +26,7 @@ coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
+    mult = 20
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -50,7 +51,7 @@ def qpsk_modulator(binary_sequence):
             modulated_sequence[i//2] = 1 - 1j
     
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
-    return modulated_sequence
+    return modulated_sequence * mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 print(len(modulated_sequence))
@@ -77,7 +78,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
-    random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
+    random_noise = np.random.choice(mult*np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
     ofdm_datachunk_array = np.ones((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
     ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
     ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
@@ -86,7 +87,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
     ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
  
-    return ofdm_datachunk_array * mult  # returns array of OFDM blocks
+    return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
 print(ofdm_datachunks.shape)
