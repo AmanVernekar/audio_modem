@@ -115,7 +115,7 @@ def convert_data_to_audio(data, sampling_rate):
     # sd.play(waveform, sampling_rate)
     # sd.wait()
     # np.save("rep_waveform.npy", waveform)
-    return waveform 
+    return data 
 
 chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
