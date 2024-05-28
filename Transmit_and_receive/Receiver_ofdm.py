@@ -34,10 +34,10 @@ recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1,
 sd.wait()
 
 recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy", recording)
 
 #  Using saved recording
-# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -79,8 +79,8 @@ channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
 
 # channel impulse before resynchronisation
-# plt.plot(abs(channel_impulse))  
-# plt.show()
+plt.plot(abs(channel_impulse))  
+plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
 # functions to choose the start of the impulse
@@ -143,8 +143,9 @@ def impulse_start_guassian(channel_impulse):
     print("Original Data: ", data)
     print("Smoothed Data: ", smoothed_data)
 
-impulse_shift = impulse_start_max(channel_impulse)
-# impulse_shift = 0
+# impulse_shift = impulse_start_max(channel_impulse)
+# print(impulse_shift)
+impulse_shift = 0
 
 #Recalculate the section of chirp we want
 detected_chirp = recording[detected_index-n+impulse_shift:detected_index+impulse_shift]
@@ -157,13 +158,13 @@ channel_impulse_cut = channel_impulse[:prefix_len]
 channel_impulse_full = list(channel_impulse_cut) + [0]*int(datachunk_len-prefix_len) # zero pad to datachunk length
 channel_coefficients = fft(channel_impulse_full)
 
-# plt.plot(abs(channel_impulse))
-# plt.show()
+plt.plot(abs(channel_impulse))
+plt.show()
 # plt.plot(abs(channel_coefficients))
 # plt.show()
 
 # STEP 4: crop audio file to the data
-data_start_index = detected_index+impulse_shift
+data_start_index = detected_index+impulse_shift + prefix_len
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 # load in the file sent to test against
 source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
@@ -178,7 +179,7 @@ print(f"Num of OFDM symbols: {num_symbols}")
 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 
-sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
+sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_sent.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
@@ -208,7 +209,7 @@ data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 
 
 
 
-mult = 20
+mult = 1
 
 colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
             np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
@@ -237,8 +238,8 @@ for i in range(2):
         ax.scatter(x, y, c = _colors)
         ax.axvline(0)
         ax.axhline(0)
-        ax.set_xlim((-50,50))
-        ax.set_ylim((-50,50))
+        ax.set_xlim((-30,30))
+        ax.set_ylim((-30,30))
         ax.set_aspect('equal')
 
         errors = 0

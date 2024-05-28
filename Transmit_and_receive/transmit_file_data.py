@@ -9,24 +9,22 @@ import our_chirp
 
 # STEP 1: encode file as binary data (e.g. LDPC)
 
-prefix_len = parameters.prefix_len         # cyclic prefix length
-datachunk_len = parameters.datachunk_len        # length of data  
-lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
-upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
-sample_rate = parameters.sample_rate        # sample rate 
-repetition_factor = 5       # WHAT IS THIS?
+prefix_len = parameters.prefix_len                  # cyclic prefix length
+datachunk_len = parameters.datachunk_len            # length of data  
+sample_rate = parameters.sample_rate                # sample rate 
+repetition_factor = 5       
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)*2
 symbol_count = parameters.symbol_count
 
-# WHAT IS THE REPETITION?
+
 coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 # rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
-    mult = 20
+    mult = 1
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -54,13 +52,13 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence * mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
-print(modulated_sequence)
-print(len(modulated_sequence))
+# print(modulated_sequence)
+# print(len(modulated_sequence))
 np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
-    mult = 20
+    mult = 1
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
 
@@ -131,9 +129,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'Data_files/{symbol_count}symbol_overall_w_noise.npy', overall_sig)
+np.save(f'Data_files/{symbol_count}symbol_overall_sent.npy', overall_sig)
 
-output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with_w_noise.wav'
+output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")
