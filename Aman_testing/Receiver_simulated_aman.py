@@ -7,7 +7,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 
-from . import parameters
+from ..Transmit_and_receive import parameters
 
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
@@ -30,7 +30,7 @@ r = 0.99
 noise_std = 0.05
 simulated_channel = start * r**np.arange(prefix_len) + np.random.normal(0, noise_std, prefix_len)
 
-sent_signal = np.load(f'{symbol_count}symbol_overall.npy')
+sent_signal = np.load(f'{symbol_count}symbol_overall_w_noise.npy')
 recording = np.convolve(sent_signal, simulated_channel, 'full')[:-(prefix_len-1)]
 recording = recording + np.random.normal(0, 0.025, len(recording))
 recording_without_chirp = recording[-(symbol_count*symbol_len):]

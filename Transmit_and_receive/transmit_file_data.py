@@ -9,23 +9,22 @@ import our_chirp
 
 # STEP 1: encode file as binary data (e.g. LDPC)
 
-prefix_len = parameters.prefix_len         # cyclic prefix length
-datachunk_len = parameters.datachunk_len        # length of data  
-lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
-upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
-sample_rate = parameters.sample_rate        # sample rate 
-repetition_factor = 5       # WHAT IS THIS?
+prefix_len = parameters.prefix_len                  # cyclic prefix length
+datachunk_len = parameters.datachunk_len            # length of data  
+sample_rate = parameters.sample_rate                # sample rate 
+repetition_factor = 5       
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)*2
 symbol_count = parameters.symbol_count
 
-# WHAT IS THE REPETITION?
+
 coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 # rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
+    mult = 1
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -50,14 +49,16 @@ def qpsk_modulator(binary_sequence):
             modulated_sequence[i//2] = 1 - 1j
     
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
-    return modulated_sequence
+    return modulated_sequence * mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
-print(len(modulated_sequence))
+# print(modulated_sequence)
+# print(len(modulated_sequence))
 np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
+    mult = 1
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
 
@@ -76,7 +77,10 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
-    ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
+    random_noise = np.random.choice(mult*np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
+    ofdm_datachunk_array = np.ones((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
+    ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
+    ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
 
     # insert information in OFDM blocks: 
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
@@ -94,10 +98,16 @@ time_domain_datachunks = time_domain_datachunks.real  # takes real part of ifft
 # STEP 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_datachunks, prefix_length):
     block_prefixes = ofdm_datachunks[:, -prefix_length:]
-    ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)
+    block_suffixes = ofdm_datachunks[:, :prefix_length]                             #CHANGED HERE
+    ofdm_symbols = np.concatenate((ofdm_datachunks, block_suffixes), axis=1)        #CHANGED HERE 
+    ofdm_symbols = np.concatenate((block_prefixes, ofdm_symbols), axis=1)           #CHANGED HERE
     return ofdm_symbols
 
+
+print(len(time_domain_datachunks[1]))
 ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, prefix_len)
+print(len(ofdm_symbols[1]))
+
 
 # STEP 6: flatten all time domain blocks into one array
 concatenated_blocks = ofdm_symbols.flatten()
@@ -105,7 +115,7 @@ concatenated_blocks = ofdm_symbols.flatten()
 # STEP 7:convert to audio file to transmit across channel. add chirp beforehand etc.
 def convert_data_to_audio(data, sampling_rate):
     # normalise to between -1 and 1:
-    max_absolute_val = np.max(np.abs(data))
+    max_absolute_val = (1/0.9)*np.max(np.abs(data))
     waveform = data / max_absolute_val
 
     # play the waveform
@@ -125,7 +135,7 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'Data_files/{symbol_count}symbol_overall.npy', overall_sig)
+np.save(f'Data_files/{symbol_count}symbol_overall_sent.npy', overall_sig)
 
 output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)

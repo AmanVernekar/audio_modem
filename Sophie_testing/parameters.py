@@ -9,10 +9,13 @@ chirp_duration = 5                          # duration of chirp in seconds
 chirp_start_freq = 0.01                     # chirp start freq
 chirp_end_freq = 22050                      # chirp end freq
 chirp_type = "linear"                       # chirp type
-recording_data_len = 46080                  # number of samples of data (HOW IS THIS FOUND)
+recording_data_len = 483840                 # number of samples of data (HOW IS THIS FOUND)
 lower_bin = 85
 upper_bin = 850
-symbol_count = 10
+symbol_count = 105
+ch_sample_1 = chirp_start_freq*chirp_duration
+ch_sample_2 = chirp_end_freq*chirp_duration
+ch_len = sample_rate*chirp_duration
 
 def calculate_bins(sample_rate, lower_freq, upper_freq, ofdm_chunk_length):
     lower_bin = np.ceil((lower_freq / sample_rate) * ofdm_chunk_length).astype(int)  # round up
