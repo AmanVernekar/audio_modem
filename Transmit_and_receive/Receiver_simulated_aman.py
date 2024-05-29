@@ -7,7 +7,7 @@ from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
 
 
-from ..Transmit_and_receive import parameters
+import parameters
 
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol

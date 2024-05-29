@@ -16,3 +16,4 @@ chirp_sig = list(chirp_sig)
 chirp_prefix = chirp_sig[-parameters.prefix_len:]
 chirp_suffix = chirp_sig[:parameters.prefix_len]
 chirp_w_prefix_suffix = chirp_prefix + chirp_sig + chirp_suffix
+chirp_w_prefix = chirp_prefix + chirp_sig
