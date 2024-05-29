@@ -98,10 +98,16 @@ time_domain_datachunks = time_domain_datachunks.real  # takes real part of ifft
 # STEP 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_datachunks, prefix_length):
     block_prefixes = ofdm_datachunks[:, -prefix_length:]
-    ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)
+    block_suffixes = ofdm_datachunks[:, :prefix_length]                             #CHANGED HERE
+    ofdm_symbols = np.concatenate((ofdm_datachunks, block_suffixes), axis=1)        #CHANGED HERE 
+    ofdm_symbols = np.concatenate((block_prefixes, ofdm_symbols), axis=1)           #CHANGED HERE
     return ofdm_symbols
 
+
+print(len(time_domain_datachunks[1]))
 ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, prefix_len)
+print(len(ofdm_symbols[1]))
+
 
 # STEP 6: flatten all time domain blocks into one array
 concatenated_blocks = ofdm_symbols.flatten()
