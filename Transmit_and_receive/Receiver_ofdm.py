@@ -34,10 +34,11 @@ chirp_sig = our_chirp.chirp_sig
 # sd.wait()
 
 # recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy", recording)
 
 #  Using saved recording
 recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_indoor.npy")
+# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
@@ -67,13 +68,13 @@ t_mat = np.arange(0, len(matched_filter_output))
 # plt.plot(abs(matched_filter_output))
 # plt.show()
 
-detected_index = np.argmax(matched_filter_output)
+detected_index = np.argmax(matched_filter_output) + 150                                            # + 150 
 print(detected_index)
 
 # Use matched filter to take out the chirp from the recording
 chirp_fft = fft(chirp_sig)
 n = int(sample_rate*chirp_duration)   # number of samples of the chirp 
-detected_chirp = recording[detected_index-n:detected_index]
+detected_chirp = recording[detected_index-n:detected_index]             
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
@@ -105,8 +106,8 @@ plt.show()
 # plt.show()
 
 # channel impulse before resynchronisation
-# plt.plot(abs(channel_impulse))  
-# plt.show()
+plt.plot(abs(channel_impulse))  
+plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
 # functions to choose the start of the impulse
@@ -169,11 +170,9 @@ def impulse_start_guassian(channel_impulse):
     print("Original Data: ", data)
     print("Smoothed Data: ", smoothed_data)
 
-impulse_shift = impulse_start_max(channel_impulse)
-print(impulse_shift)
-# impulse_shift = 0
-shifts = range(-10,1000)
-total_errors = np.zeros((len(shifts)))
+# impulse_shift = impulse_start_max(channel_impulse)
+# print(impulse_shift)
+impulse_shift = 0
 
 for g, shift in enumerate(shifts):
     #Recalculate the section of chirp we want
@@ -195,17 +194,17 @@ for g, shift in enumerate(shifts):
     channel_impulse_full = list(channel_impulse_cut) + [0]*int(datachunk_len-prefix_len) # zero pad to datachunk length
     channel_coefficients = fft(channel_impulse_full)
 
-    # plt.plot(abs(channel_impulse))
-    # plt.show()
-    # plt.plot(abs(channel_coefficients))
-    # plt.show()
+plt.plot(abs(channel_impulse))
+plt.show()
+# plt.plot(abs(channel_coefficients))
+# plt.show()
 
-    # STEP 4: crop audio file to the data
-    data_start_index = detected_index+shift
-    recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
-    # load in the file sent to test against
-    source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
-    print(len(source_mod_seq))
+# STEP 4: crop audio file to the data
+data_start_index = detected_index+impulse_shift + prefix_len
+recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+# load in the file sent to test against
+source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
+print(len(source_mod_seq))
 
 
     # STEP 5: cut into different blocks and get rid of cyclic prefix
@@ -214,13 +213,11 @@ for g, shift in enumerate(shifts):
 
     print(f"Num of OFDM symbols: {num_symbols}")
 
-    time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))
-    print(time_domain_datachunks.shape)
-    time_domain_datachunks = time_domain_datachunks[:, prefix_len:]
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:] #  -prefix_len]    # CHANGED HERE 
 
-    sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
-    sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
-    sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
+sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_sent.npy')
+sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
+sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:] #  -prefix_len]  # CHANGED HERE 
 
     ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
     # channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
@@ -248,7 +245,7 @@ for g, shift in enumerate(shifts):
 
 
 
-    mult = 20
+mult = 1
 
     colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
                 np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
@@ -257,30 +254,29 @@ for g, shift in enumerate(shifts):
                 "Error"))))
 
 
-    # for mask_col in ["b", "c", "m", "y"]:
-    # mask_col = "b"
-    # fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(20, 8))
-    # Generate and plot data for each subplot
-    total_error = 0
-    for i in range(2):
-        for j in range(5):
-            # Generate random data
-            # index = 10*(i*5 + j) + 9
-            index = i*5 + j
-            _data = data[index]
-            x = _data.real
-            y = _data.imag
-            # _colors = colors[index*num_data_bins:(index+1)*num_data_bins]
-            _source_mod_seq = source_mod_seq[index*num_data_bins:(index+1)*num_data_bins]
-            # Plot on the corresponding subplot
-            # ax = axes[i, j]
-            # # ax.scatter(x[_colors==mask_col], y[_colors==mask_col], c = _colors[_colors==mask_col])
-            # ax.scatter(x, y, c = _colors)
-            # ax.axvline(0)
-            # ax.axhline(0)
-            # ax.set_xlim((-50,50))
-            # ax.set_ylim((-50,50))
-            # ax.set_aspect('equal')
+# for mask_col in ["b", "c", "m", "y"]:
+# mask_col = "b"
+fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(20, 8))
+# Generate and plot data for each subplot
+for i in range(2):
+    for j in range(5):
+        # Generate random data
+        # index = 10*(i*5 + j) + 9
+        index = i*5 + j
+        _data = data[index]
+        x = _data.real
+        y = _data.imag
+        _colors = colors[index*num_data_bins:(index+1)*num_data_bins]
+        _source_mod_seq = source_mod_seq[index*num_data_bins:(index+1)*num_data_bins]
+        # Plot on the corresponding subplot
+        ax = axes[i, j]
+        # ax.scatter(x[_colors==mask_col], y[_colors==mask_col], c = _colors[_colors==mask_col])
+        ax.scatter(x, y, c = _colors)
+        ax.axvline(0)
+        ax.axhline(0)
+        ax.set_xlim((-30,30))
+        ax.set_ylim((-30,30))
+        ax.set_aspect('equal')
 
             errors = 0
             for n, val in enumerate(_data):
