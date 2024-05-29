@@ -9,22 +9,24 @@ import our_chirp
 
 # STEP 1: encode file as binary data (e.g. LDPC)
 
-prefix_len = parameters.prefix_len                  # cyclic prefix length
-datachunk_len = parameters.datachunk_len            # length of data  
-sample_rate = parameters.sample_rate                # sample rate 
-repetition_factor = 5       
+prefix_len = parameters.prefix_len         # cyclic prefix length
+datachunk_len = parameters.datachunk_len        # length of data  
+lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
+upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
+sample_rate = parameters.sample_rate        # sample rate 
+repetition_factor = 5       # WHAT IS THIS?
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)*2
 symbol_count = parameters.symbol_count
 
-
+# WHAT IS THE REPETITION?
 coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 # rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
-    mult = 1
+    mult = 20
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -52,13 +54,13 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence * mult
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
-# print(modulated_sequence)
-# print(len(modulated_sequence))
+print(modulated_sequence)
+print(len(modulated_sequence))
 np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
-    mult = 1
+    mult = 20
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
 
@@ -98,16 +100,10 @@ time_domain_datachunks = time_domain_datachunks.real  # takes real part of ifft
 # STEP 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_datachunks, prefix_length):
     block_prefixes = ofdm_datachunks[:, -prefix_length:]
-    # block_suffixes = ofdm_datachunks[:, :prefix_length]                             #CHANGED HERE
-    # ofdm_symbols = np.concatenate((ofdm_datachunks, block_suffixes), axis=1)        #CHANGED HERE 
-    ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)           #CHANGED HERE
+    ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)
     return ofdm_symbols
 
-
-print(len(time_domain_datachunks[1]))
 ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, prefix_len)
-print(len(ofdm_symbols[1]))
-
 
 # STEP 6: flatten all time domain blocks into one array
 concatenated_blocks = ofdm_symbols.flatten()
@@ -135,9 +131,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'Data_files/{symbol_count}symbol_overall_sent.npy', overall_sig)
+np.save(f'Data_files/{symbol_count}symbol_overall_w_noise.npy', overall_sig)
 
-output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with.wav'
+output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with_w_noise.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")
