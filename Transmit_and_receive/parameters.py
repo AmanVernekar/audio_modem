@@ -1,7 +1,7 @@
 import numpy as np
 
 datachunk_len = 4096                        # length of the data in the OFDM symbol
-prefix_len = 1024                           # length of cyclic prefix
+prefix_len = 512                           # length of cyclic prefix
 symbol_len = datachunk_len + prefix_len     # total length of symbol
 sample_rate = 44100                         # samples per second
 rec_duration = 19                            # duration of recording in seconds
