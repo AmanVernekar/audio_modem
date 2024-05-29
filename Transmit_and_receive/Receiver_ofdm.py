@@ -177,11 +177,11 @@ num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 
 print(f"Num of OFDM symbols: {num_symbols}")
 
-time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len: -prefix_len]    # CHANGED HERE 
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:] #  -prefix_len]    # CHANGED HERE 
 
 sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_sent.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
-sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len: -prefix_len]  # CHANGED HERE 
+sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:] #  -prefix_len]  # CHANGED HERE 
 
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 # channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
