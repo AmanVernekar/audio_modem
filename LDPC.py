@@ -1,7 +1,7 @@
 from ldpc_jossy.py import ldpc
 import numpy as np 
 
-c = ldpc.code('802.11n', '1/2', 54)
+c = ldpc.code('802.16', '1/2', 54)
 print(c.K)
 
 raw_bin_data = np.load("Data_files/binary_data.npy")[:648]
