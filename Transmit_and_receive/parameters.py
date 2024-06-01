@@ -7,8 +7,6 @@ import numpy as np
 prefix_len = 1024                            # length of cyclic prefix
 sample_rate = 48000                          # samples per second
 
-rec_duration = 19                            # duration of recording in seconds
-
 #-----------------------------------------------------
 # Chirp parameters
 #-----------------------------------------------------
@@ -43,3 +41,4 @@ ldpc_k = 648
 
 symbol_count = 105
 recording_data_len = symbol_count * symbol_len
+rec_duration = 19                            # duration of recording in seconds
