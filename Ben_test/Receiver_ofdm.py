@@ -196,6 +196,10 @@ def estimate_channel_from_known_ofdm(num_known_symbols):
 
 channel_estimate = estimate_channel_from_known_ofdm(5)
 
+
+# calculate ofdm_datachunks from previous channel estimate
+# 
+
 def measure_phase_drift_for_one_frequency(first_ofdm_bin_value, second_ofdm_bin_value):
     # Normalise each bin value
     magn_first = np.abs(first_ofdm_bin_value)
@@ -218,15 +222,28 @@ def measure_phase_drift_between_datachunks(first_ofdm_datachunk, second_ofdm_dat
     # for the purposes of testing, lets plot the phase change (anticlockwise) compared to frequency
     phase_values_in_radians = np.angle(phase_coefficients)
     frequency_bins = np.linspace(0, len(phase_values_in_radians))
-    plt.figure(figsize=(10, 6))
-    plt.plot(frequency_bins, phase_values_in_radians, marker='o')
-    plt.xlabel('Frequency Bin')
-    plt.ylabel('Phase (radians)')
-    plt.title('Phase Values in Radians for Each Frequency Bin')
-    plt.grid(True)
-    plt.show()
+
+    # plot the phase
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(frequency_bins, phase_values_in_radians, marker='o')
+    # plt.xlabel('Frequency Bin')
+    # plt.ylabel('Phase (radians)')
+    # plt.title('Phase Values in Radians for Each Frequency Bin')
+    # plt.grid(True)
+    # plt.show()
 
     return phase_coefficients
+
+# method to calculate phase drift (LDPC dynamic etc.)
+# output = phase_coefficients (vector of phase coefficients)
+
+# method to compensate for phase drift
+def compensate_for_phase_drift(remaining_data, phase_coefficients):
+    # remaining_data is an array (remaining part of ofdm_datachunks I think)
+    # the goal is to multipy each chunk in remaining_data by the phase_coefficients
+    # this function does not catch errors in the inputs
+    compensated_remaining_data = remaining_data * phase_coefficients
+    return compensated_remaining_data
 
 
 ofdm_datachunks = ofdm_datachunks[5:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 

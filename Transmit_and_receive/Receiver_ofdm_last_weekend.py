@@ -220,38 +220,38 @@ if __name__ == '__main__':
 
     
     #-----------------------------------------------------
-    # STEP 4: Detection pipeline!
+    # STEP 4: Re-synchonise using known OFDM optimisation. Calculate initial channel coefficients
     #-----------------------------------------------------
 
     #-----------------------------------------------------
-    # STEP 4.1: Re-compute channel channel coefficients
+    # STEP 5: Run a loop to decode rest of file
+    #-----------------------------------------------------
+
+    #-----------------------------------------------------
+    # STEP 5.1 Demodulate 5 OFDM symbols to obtain codeword bits.
+    #-----------------------------------------------------
+
+    #-----------------------------------------------------
+    # STEP 5.2 Use the LDPC decoder to recover message bits from codeword bits.
+    #-----------------------------------------------------
+
+    #-----------------------------------------------------
+    # STEP 5.3 Reconstruct 4 subcarrier sequences from recovered message bits.
+    #-----------------------------------------------------
+
+    #-----------------------------------------------------
+    # STEP 5.4 Calculate new channel estimates and average over the 4 sequences.
+    #-----------------------------------------------------
+
+    #-----------------------------------------------------
+    # STEP 5.5 Update channel estimate by taking a weighted average of new and current estimates.
     #-----------------------------------------------------
 
     channel_coefficients = optimise_channel(shifts, num_known_symbols)
     
 
     #-----------------------------------------------------
-    # STEP 4.1: Map each value to bits using QPSK decision regions
-    #-----------------------------------------------------
-
-    #-----------------------------------------------------
-    # STEP 4.1: Compensate for phase drift
-    #-----------------------------------------------------
-
-    #-----------------------------------------------------
-    # STEP 5: Resynchronise using known OFDM blocks
-    #-----------------------------------------------------
-
-    #-----------------------------------------------------
-    # STEP 6: Recalculate detected data using optimised synchronisation estimate
-    #-----------------------------------------------------
-
-    #-----------------------------------------------------
-    # STEP 7: Decode recieved bits to information bits (LDPC decoding)
-    #-----------------------------------------------------
-
-    #-----------------------------------------------------
-    # STEP 7.5 : Optionally calculate/plot errors
+    # STEP 5.6: Optionally calculate/plot errors
     #-----------------------------------------------------
     colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
             np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
@@ -262,8 +262,5 @@ if __name__ == '__main__':
 
 
     #-----------------------------------------------------
-    # STEP 8: Convert information bits to file using standardised preamble.
+    # STEP 6: Convert information bits to file using standardised preamble.
     #-----------------------------------------------------
-
-
-
