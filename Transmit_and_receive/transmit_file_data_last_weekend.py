@@ -22,8 +22,40 @@ symbol_count = parameters.symbol_count
 
 
 #-----------------------------------------------------
-# STEP 1: Load file as binary data AND ADD PREAMBLE
+# STEP 1: Convert file to binary (including preamble)
 #-----------------------------------------------------
+
+#-----------------------------------------------------
+# STEP 1.1: Load file information (binary data, file name, file size)
+#-----------------------------------------------------
+
+file_path = 'Transmit_and_receive/files_to_transmit/example.txt'
+
+# Extract file name
+file_name = file_path.split('/')[-1]  # Extracts the file name from the file path
+
+# File as binary array
+with open(file_path, 'rb') as file:
+    # Read the file content into a binary string
+    file_content = file.read()
+    file_size_bytes = len(file_content)
+    # Convert the binary content to a numpy array
+    file_as_binary_array = np.unpackbits(np.frombuffer(file_content, dtype=np.uint8))
+
+# Calculate file size in bits
+file_size_bits = file_size_bytes * 8
+
+# # Print file information
+# print("File Name:", file_name)
+# print("File Size (bytes):", file_size_bytes)
+# print("File Size (bits):", file_size_bits)
+# print("Binary array:", file_as_binary_array)
+
+#-----------------------------------------------------
+# STEP 1.2: Add preamble
+#-----------------------------------------------------
+
+# currently a WIP, see 'files_to_binary.py'
 
 #-----------------------------------------------------
 # STEP 2: Encode the binary data using LDPC
