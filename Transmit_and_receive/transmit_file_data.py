@@ -119,7 +119,7 @@ chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
 
 waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
-overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform)
+overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform) + chirp_w_prefix_suffix 
 print(len(waveform))
 
 # Play the audio data
