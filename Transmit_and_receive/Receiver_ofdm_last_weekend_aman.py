@@ -38,7 +38,7 @@ ldpc_z = parameters.ldpc_z
 ldpc_k = parameters.ldpc_k
 ldpc_c = ldpc.code('802.16', '1/2', ldpc_z)
 
-testing = False
+testing = True
 
 # TODO
 # edit this to contain the known chirp based on agreed seed/sent file if testing = True
@@ -48,7 +48,7 @@ if testing:
     symbol_count = parameters.symbol_count               # number of symbols used in the test
     source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
     sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
-    sent_without_chirps = sent_signal[chirp_duration : -chirp_duration]
+    sent_without_chirps = sent_signal[chirp_sample_count : -chirp_sample_count]
     sent_datachunks = np.array(np.array_split(sent_without_chirps, symbol_count))[:, prefix_len:]
     sent_known_datachunks = sent_datachunks[:num_known_symbols]
     rec_duration = parameters.rec_duration_test
@@ -270,7 +270,7 @@ def decode_data(LLRs, chunks_num):
 
 # use the bitstream to extract metadata
 def extract_metadata(recovered_bitstream):
-    \0\0FileName.type\0\0numBits\0\0
+    # \0\0FileName.type\0\0numBits\0\0
     
     return file_name, file_type, file_num_bits
 

@@ -42,7 +42,7 @@ ldpc_k = 648
 
 symbol_count = 105
 recording_data_len = symbol_count * symbol_len
-rec_duration_test = 19                          # duration of recording in seconds
+rec_duration_test = 30                          # duration of recording in seconds
 rec_duration_real = 60
 
 
@@ -60,7 +60,7 @@ alpha = 0.5
 np.random.seed(1)
 random_integers = np.random.randint(0,4,2047)
 random_complex_values = np.sqrt(2) * np.exp(0 + random_integers * 1j * np.pi/2  + np.pi/4 * 1j)
-known_datachunk = np.zeros((datachunk_len))
+known_datachunk = np.zeros((datachunk_len), dtype=complex)
 known_datachunk[1 : datachunk_len//2] = random_complex_values
 known_datachunk[datachunk_len//2  + 1:] = random_complex_values[::-1]
 sent_known_datachunks = [known_datachunk]
