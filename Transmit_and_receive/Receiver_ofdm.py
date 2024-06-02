@@ -3,6 +3,8 @@ from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
 import sounddevice as sd
 from scipy.signal import chirp, correlate
+from math import sqrt
+from ldpc_jossy.py import ldpc
 
 import parameters
 import our_chirp
@@ -30,14 +32,14 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+# sd.wait()
 
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -173,6 +175,7 @@ channel_estimate = estimate_channel_from_known_ofdm()
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
+
 first_data = data[0]
 first_colours = colors[:num_data_bins]
 
@@ -182,5 +185,71 @@ plt.ylim(-20, 20)
 plt.axhline(y=0, color='k')
 plt.axvline(x=0, color='k')
 plt.show()
+
+
+# z = parameters.ldpc_z
+# k = parameters.ldpc_k
+# c = ldpc.code('802.16', '1/2', z)
+
+# def LLRs(complex_vals, c_k, sigma_square, A): 
+#     LLR_list = []
+#     for i in range(len(complex_vals)): 
+#         c_conj = c_k[i].conjugate()
+#         L_1 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].imag) / (sigma_square)
+#         LLR_list.append(L_1)
+#         L_2 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].real) / (sigma_square)
+#         LLR_list.append(L_2)
+
+#     return LLR_list
+
+# def decode_data(LLRs, chunks_num): 
+#     LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+     
+#     decoded_list = []
+#     for i in range(chunks_num): 
+#         decoded_chunk, it = c.decode(LLRs_split[i])
+#         decoded_list.append(decoded_chunk)
+    
+#     decoded_data = np.concatenate(decoded_list)
+#     threshold = 0.0
+#     decoded_data = (decoded_data < threshold).astype(int)
+
+#     decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
+#     decoded_raw_data = np.concatenate(decoded_data_split)
+
+#     return decoded_raw_data
+
+# c_k = channel_estimate[lower_bin:upper_bin+1]
+# sigma_square = 1
+
+# def average_magnitude(complex_array):
+#     # Calculate the magnitudes of the complex numbers
+#     magnitudes = np.abs(complex_array)
+    
+#     # Calculate the average of the magnitudes
+#     average_mag = np.mean(magnitudes)
+    
+#     return average_mag
+
+
+# A = average_magnitude(data[0])
+# print("A: ", A)
+# LLRs_block_1 = LLRs(data[0], c_k, sigma_square, A)
+# decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
+
+
+# raw_bin_data = np.load("Data_files/binary_data.npy")
+# compare1 = raw_bin_data[:num_data_bins]
+# compare2 = decoded_raw_data[:num_data_bins]
+
+# def error(compare1, compare2, test): 
+#     wrong = 0
+#     for i in range(len(compare1)): 
+#         if int(compare1[i]) != compare2[i]: 
+#             wrong = wrong + 1
+#     print("wrong: ", wrong)
+#     print(test, " : ", (wrong/ len(compare1))*100)
+
+# error(compare1, compare2, '1 against 2')
 
 
