@@ -3,6 +3,7 @@ from numpy.fft import fft, ifft
 import sounddevice as sd
 import soundfile as sf
 from scipy.signal import chirp
+from ldpc_jossy.py import ldpc
 
 import parameters
 import our_chirp
@@ -20,7 +21,37 @@ known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
 
 
-coded_info_sequence = np.load("Data_files/binary_data.npy")[:(symbol_count-1)*binary_len*2] # symbol - 1 because of the known one
+
+z = parameters.ldpc_z
+k = parameters.ldpc_k
+c = ldpc.code('802.16', '1/2', z)
+
+raw_bin_data = np.load("Data_files/binary_data.npy")[:(symbol_count-1)*binary_len]
+
+def encode_data(_raw_bin_data): 
+    # The code must have an input of 648 to compute the encoded data,
+    # therefore the raw binary data is first zero padded to ensure it's a multiple of 648. 
+    mod_k = (len(_raw_bin_data) % k)                             # Finds how much we should pad by 
+    zeros = k - mod_k
+    if zeros == k: 
+        zeros = 0
+    _raw_bin_data = np.pad(_raw_bin_data, (0,zeros), 'constant')      # Pads by num of zeros 
+    chunks_num = int(len(_raw_bin_data) / k)
+    raw_bin_chunks = np.array(np.array_split(_raw_bin_data, chunks_num))
+     
+    # Generates a sequence of coded bits and appends to the list
+    ldpc_list = []
+    for i in range(chunks_num): 
+        ldpc_encoded_chunk = c.encode(raw_bin_chunks[i])
+        ldpc_list.append(ldpc_encoded_chunk)
+    
+    ldpc_encoded_data = np.concatenate(ldpc_list)
+
+    # Returns the data encoded in blocks of k 
+    return ldpc_encoded_data, _raw_bin_data, chunks_num
+
+coded_info_sequence = encode_data(raw_bin_data)[0]
+np.save(f"Data_files/encoded_data.npy", coded_info_sequence)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):

@@ -168,7 +168,7 @@ num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
-channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
+channel_estimate = estimate_channel_from_known_ofdm()
 
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511

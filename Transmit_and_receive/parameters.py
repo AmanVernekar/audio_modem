@@ -14,6 +14,8 @@ lower_bin = 85
 upper_bin = 732
 symbol_count = 105
 chirp_reduction = 0.1
+ldpc_z = 54
+ldpc_k = 648
 
 
 
