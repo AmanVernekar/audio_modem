@@ -217,7 +217,7 @@ def convert_data_to_waveform(data):
     # np.save("rep_waveform.npy", waveform)
     return waveform 
 
-waveform = convert_data_to_waveform(concatenated_blocks, sample_rate)
+waveform = convert_data_to_waveform(concatenated_blocks)
 
 #-----------------------------------------------------
 # STEP 6: Add chirps and known OFDM blocks as per BEEEP standard
