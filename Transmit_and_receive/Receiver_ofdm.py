@@ -42,7 +42,6 @@ recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_n
 # this means that the max index detected is now at the end of the chirp
 matched_filter_output = correlate(recording, chirp_sig, mode='full')
 
-
 detected_index = np.argmax(matched_filter_output)
 print(detected_index)
 
@@ -53,10 +52,6 @@ detected_chirp = recording[detected_index-chirp_sample_count:detected_index]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
-
-# channel impulse before resynchronisation
-# plt.plot(abs(channel_impulse))  
-# plt.show()
 
 # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
 # functions to choose the start of the impulse
@@ -90,7 +85,7 @@ def impulse_start_max(channel_impulse):
 impulse_shift = impulse_start_max(channel_impulse)
 impulse_shift = 0
 
-shifts = range(-200,200)
+shifts = range(-100,100)
 total_errors = np.zeros((len(shifts)))
 
 source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
@@ -105,7 +100,6 @@ colors = np.where(source_mod_seq == (1+1j), "b",
             np.where(source_mod_seq == (1-1j), "y", 
             "Error"))))
 
-print("colours check: ", colors[:10])
 
 def estimate_channel_from_known_ofdm(_num_known_symbols):
         channel_estimates = np.zeros((_num_known_symbols, datachunk_len), dtype='complex')
@@ -114,100 +108,33 @@ def estimate_channel_from_known_ofdm(_num_known_symbols):
             channel_estimates[i] = channel_fft
         
         average_channel_estimate = np.mean(channel_estimates, axis=0)
-        # print(channel_estimates.shape)
-        # print(average_channel_estimate.shape)
         return average_channel_estimate
 
 for g, shift in enumerate(shifts):
-    #Recalculate the section of chirp we want
-    detected_chirp = recording[detected_index-chirp_sample_count+shift:detected_index+shift]
-    detected_fft = fft(detected_chirp)
-    channel_fft = detected_fft/chirp_fft
-    channel_impulse = ifft(channel_fft)
 
-    # take the channel that is the length of the cyclic prefix, zero pad to get datachunk length and fft
-    channel_impulse_cut = channel_impulse[:prefix_len]
-    channel_impulse_full = list(channel_impulse_cut) + [0]*int(datachunk_len-prefix_len) # zero pad to datachunk length
-    channel_coefficients = fft(channel_impulse_full)
-
-    # plt.plot(abs(channel_impulse))
-    # plt.show()
-    # plt.plot(abs(channel_coefficients))
-    # plt.show()
-
-    # STEP 4: crop audio file to the data
     data_start_index = detected_index+shift+prefix_len
     recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
-    # load in the file sent to test against
-    # print(len(source_mod_seq))
-
 
     # STEP 5: cut into different blocks and get rid of cyclic prefix
-
     num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
-
-    # print(f"Num of OFDM symbols: {num_symbols}")
-
     time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
-
     ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
-    # channel_estimate = ofdm_datachunks[0]/fft(sent_datachunks[0])
 
     channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
 
     ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
     data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
-    # data = data.flatten()
-    # data = data[:len(source_mod_seq)]  # as the binary data isn't an exact multiple of 511*2 we have zero padded this gets rid of zeros
-
-    # makes list of colours corresponding to the original modulated data
-
-
-
-
-
-
-    # for mask_col in ["b", "c", "m", "y"]:
-    # mask_col = "b"
-    # fig, axes = plt.subplots(nrows=2, ncols=5, figsize=(20, 8))
-    # Generate and plot data for each subplot
     total_error = 0
-    
-    for i in range(2):
-        for j in range(5):
-            # Generate random data
-            # index = 10*(i*5 + j) + 9
-            index = i*5 + j + 5
-            _data = data[index]
-            x = _data.real
-            y = _data.imag
-            # _colors = colors[index*num_data_bins:(index+1)*num_data_bins]
-            _source_mod_seq = source_mod_seq[index*num_data_bins:(index+1)*num_data_bins]
-            # Plot on the corresponding subplot
-            # ax = axes[i, j]
-            # # ax.scatter(x[_colors==mask_col], y[_colors==mask_col], c = _colors[_colors==mask_col])
-            # ax.scatter(x, y, c = _colors)
-            # ax.axvline(0)
-            # ax.axhline(0)
-            # ax.set_xlim((-50,50))
-            # ax.set_ylim((-50,50))
-            # ax.set_aspect('equal')
 
-            errors = 0
-            for polka, val in enumerate(_data):
-                sent = _source_mod_seq[polka]
-                if val.real/sent.real < 0 or val.imag/sent.imag < 0:
-                    errors = errors + 1
-            total_error = total_error + errors
+    _data = data[:num_known_symbols].flatten()
+    _source_mod_seq = source_mod_seq[:num_known_symbols * num_data_bins]
+    for w, value in enumerate(_data):
+        sent = _source_mod_seq[w]
+        if value.real/sent.real < 0 or value.imag/sent.imag < 0:
+                    total_error = total_error + 1
+
     total_errors[g] = total_error*10/len(_data)
-
-            # ax.set_title(f'OFDM Symbol {index + 1}\nerror % = {round(errors*100/len(_data), 2)}')
-            # ax.text(10, 10, f"error % = {errors/len(_data)}")
-
-    # Adjust layout to prevent overlap
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])
-    # plt.show()
 
 plt.plot(shifts, total_errors)
 plt.axvline(shifts[np.argmin(total_errors)])
@@ -221,15 +148,12 @@ print(best_shift)
 print(np.min(total_errors))
 
 
+# Refinding the data from the best shift. 
 data_start_index = detected_index+best_shift+prefix_len
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 
-# STEP 5: cut into different blocks and get rid of cyclic prefix
-
 num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
-
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
-
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
 channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
@@ -240,29 +164,11 @@ data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 
 first_data = data[0]
 first_colours = colors[:num_data_bins]
 
-
 plt.scatter(first_data.real, first_data.imag, c=first_colours)
+plt.xlim(-20, 20)  # Limit the x-axis 
+plt.ylim(-20, 20)
+plt.axhline(y=0, color='k')
+plt.axvline(x=0, color='k')
 plt.show()
 
-
-
-# plt.scatter(data.real, data.imag, c=colors)
-# plt.axvline(0)
-# plt.axhline(0)
-# plt.show()
-
-
-
-# step 6: map each value to bits using QPSK decision regions
-# step 8: decode recieved bits to information bits
-# step 9: convert information bits to file using standardised preamble.
-
-# recovered_values = np.where(data.real >= 0 and data.imag >= 0, 1+1j, 
-#             np.where(data.real < 0 and data.imag >= 0, -1+1j, 
-#             np.where(data.real < 0 and data.imag < 0, -1-1j, 
-#             np.where(data.real >= 0 and data.imag < 0, 1-1j, 
-#             "Error"))))
-
-# errors = np.count_nonzero(recovered_values-source_mod_seq)
-# print(errors/len(recovered_values))
 
