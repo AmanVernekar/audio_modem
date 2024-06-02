@@ -5,7 +5,7 @@ import sounddevice as sd
 from scipy.signal import chirp, correlate, find_peaks
 from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
-from ldpc_jossy.py import ldpc
+# from ldpc_jossy.py import ldpc
 
 import parameters
 import our_chirp
@@ -23,7 +23,7 @@ chirp_duration = parameters.chirp_duration           # duration of chirp in seco
 chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
 chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
 chirp_type = parameters.chirp_type                   # chirp type
-chirp_sample_count = int(sample_rate*chirp_duration)
+chirp_sample_count = int(sample_rate*chirp_duration) + 2 * prefix_len
 chirp_sig = our_chirp.chirp_sig
 
 lower_bin = parameters.lower_bin                     # lower info bin
@@ -36,7 +36,7 @@ shifts = range(-200,200)
 
 ldpc_z = parameters.ldpc_z
 ldpc_k = parameters.ldpc_k
-ldpc_c = ldpc.code('802.16', '1/2', ldpc_z)
+# ldpc_c = ldpc.code('802.16', '1/2', ldpc_z)
 
 testing = True
 
@@ -48,7 +48,7 @@ if testing:
     symbol_count = parameters.symbol_count               # number of symbols used in the test
     source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
     sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
-    sent_without_chirps = sent_signal[chirp_sample_count : -chirp_sample_count]
+    sent_without_chirps = sent_signal[sample_rate + chirp_sample_count : -chirp_sample_count]
     sent_datachunks = np.array(np.array_split(sent_without_chirps, symbol_count))[:, prefix_len:]
     sent_known_datachunks = sent_datachunks[:num_known_symbols]
     rec_duration = parameters.rec_duration_test
@@ -121,16 +121,28 @@ def impulse_start_max(channel_impulse):
 def error_in_symbol(symbol_index, received_data, source_data):
     received_symbol = received_data[symbol_index]
     source_symbol = source_data[symbol_index * num_data_bins : (symbol_index+1) * num_data_bins]
-    is_correct = (np.sign(received_symbol.real) == np.sign(source_symbol.real)) and (np.sign(received_symbol.imag) == np.sign(source_symbol.imag))
-    truth = np.where(is_correct, 1, 0)
-    correct = np.count_nonzero(truth)
+    correct = 0
+    for i in range(num_data_bins):
+        if np.sign(received_symbol[i].real) == np.sign(source_symbol[i].real) and (np.sign(received_symbol[i].imag) == np.sign(source_symbol[i].imag)):
+            correct = correct + 1
     return num_data_bins - correct
 
 # TODO: separate functions to plot full constellation and required symbols, with error rate
-def plot_single_symbol(data, source_data, index):
-    x = data.real
-    y = data.imag
+def plot_single_symbol(data, index):
+    mult = 1
+    x = data[index].real
+    y = data[index].imag
     error = error_in_symbol(index, data, source_mod_seq)
+    _source_mod_seq = source_mod_seq[index * num_data_bins : (index+1) * num_data_bins]
+    colors = np.where(_source_mod_seq == mult*(1+1j), "b", #"b"
+                np.where(_source_mod_seq == mult*(-1+1j), "c", #"c"
+                np.where(_source_mod_seq == mult*(-1-1j), "m", #"m"
+                np.where(_source_mod_seq == mult*(1-1j), "y",  #"y"
+                "Error"))))
+    plt.title(f"OFDM Symbol {index + 1}\nerror % = {error*num_data_bins/100}")
+    plt.scatter(x, y, c=colors)
+    plt.show()
+
 
 def plot_constellation(symbol_indices, colors, data):
     # for mask_col in ["b", "c", "m", "y"]:
@@ -169,13 +181,15 @@ def plot_constellation(symbol_indices, colors, data):
 
 def detect_chirps(recording):
     matched_filter_output = correlate(recording, chirp_sig, mode='full') # mode = 'full' => max index detected is at the end of chirp
-    indices = find_peaks(matched_filter_output, height = 0.8*max(matched_filter_output), distance = sample_rate * 20)
+    indices, _ = find_peaks(matched_filter_output, height = 0.5*max(matched_filter_output), distance = sample_rate * 5)
     start_chirp_index, end_chirp_index = indices[0], indices[-1]
-    recording_data_len = end_chirp_index - start_chirp_index + 1
+    data_start_index = start_chirp_index + prefix_len
+    data_end_index = end_chirp_index - chirp_sample_count - prefix_len
+    recording_data_len = data_end_index - data_start_index + 1
     excess_len = recording_data_len % symbol_len
     
-    end_chirp_index = end_chirp_index + symbol_len - excess_len # always add samples and throw out a symbol later if required (based on metadata)
-    return start_chirp_index, end_chirp_index
+    data_end_index = data_end_index + symbol_len - excess_len # always add samples and throw out a symbol later if required (based on metadata)
+    return data_start_index, data_end_index
 
 def coeffs_from_chirp(shift, start_chirp_index): # not used at present
     detected_chirp = recording[start_chirp_index-chirp_sample_count+shift : start_chirp_index+shift]
@@ -198,9 +212,7 @@ def estimate_channel_from_known_ofdm(ofdm_datachunks):
         average_channel_estimate = np.mean(channel_estimates, axis=0)
         return average_channel_estimate
 
-def recalc_channel(shift, recording, start_chirp_index, end_chirp_index):
-    data_start_index = start_chirp_index + shift + prefix_len
-    data_end_index = end_chirp_index + shift - chirp_sample_count - prefix_len 
+def recalc_channel(shift, recording, data_start_index, data_end_index):
     recording_without_chirps = recording[data_start_index : data_end_index + 1]
     
     known_recording = recording_without_chirps[:num_known_symbols*symbol_len]
@@ -208,7 +220,7 @@ def recalc_channel(shift, recording, start_chirp_index, end_chirp_index):
     ofdm_datachunks = fft(known_time_domain_datachunks) 
     channel_estimate = estimate_channel_from_known_ofdm(ofdm_datachunks)
 
-    ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+    ofdm_datachunks = ofdm_datachunks/channel_estimate
     data = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
     error = 0
@@ -216,10 +228,10 @@ def recalc_channel(shift, recording, start_chirp_index, end_chirp_index):
         error = error + error_in_symbol(i, data, source_mod_seq)
     return channel_estimate, error
 
-def optimise_channel(shifts, recording, start_chirp_index, end_chirp_index):
-    total_errors = np.array([recalc_channel(shift, recording, start_chirp_index, end_chirp_index)[1] for shift in shifts])
+def optimise_channel(shifts, recording, data_start_index, data_end_index):
+    total_errors = np.array([recalc_channel(shift, recording, data_start_index, data_end_index)[1] for shift in shifts])
     opt_shift = shifts[np.argmin(total_errors)]
-    opt_channel, opt_error = recalc_channel(opt_shift)
+    opt_channel, opt_error = recalc_channel(opt_shift, recording, data_start_index, data_end_index)
     return opt_channel, opt_error, opt_shift
 
 # TODO: Functions for LDPC
@@ -303,10 +315,11 @@ if __name__ == '__main__':
         np.save(recording_filename, recording)
     
 
-    start_chirp_index, end_chirp_index = detect_chirps(recording)
-    channel_coefficients, _, opt_shift = optimise_channel(shifts, recording, start_chirp_index, end_chirp_index)
-    data_start_index = start_chirp_index + opt_shift + prefix_len
-    data_end_index = end_chirp_index + opt_shift - chirp_sample_count - prefix_len 
+    data_start_index, data_end_index = detect_chirps(recording)
+    channel_coefficients, _, opt_shift = optimise_channel(shifts, recording, data_start_index, data_end_index)
+    data_start_index = data_start_index + opt_shift
+    data_end_index = data_end_index + opt_shift
+
     recording_without_chirps = recording[data_start_index : data_end_index + 1]
     total_num_symbols = int(len(recording_without_chirps)/symbol_len)
     time_domain_datachunks = np.reshape(recording_without_chirps, (total_num_symbols, symbol_len))[:, prefix_len:]
@@ -316,6 +329,8 @@ if __name__ == '__main__':
 
     for symbol_index in range(1, total_num_symbols):
         received_datachunk = ofdm_datachunks[symbol_index]/channel_coefficients
+        received_datachunks = ofdm_datachunks/channel_coefficients
+        plot_single_symbol(received_datachunks[:, lower_bin:upper_bin+1], symbol_index)
 
         c_k = channel_coefficients
         sigma_square = 1
