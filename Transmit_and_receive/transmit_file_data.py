@@ -16,7 +16,6 @@ sample_rate = parameters.sample_rate        # sample rate
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)
-symbol_count = parameters.symbol_count
 known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
 
@@ -26,7 +25,7 @@ z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
-raw_bin_data = np.load("Data_files/binary_data.npy")[:(symbol_count-1)*binary_len]
+raw_bin_data = np.load("Data_files/example_file_data.npy")
 
 def encode_data(_raw_bin_data): 
     # The code must have an input of 648 to compute the encoded data,
@@ -87,7 +86,7 @@ known_modulated_seq_data = known_datachunk[0][lower_bin: upper_bin + 1]
 modulated_sequence_with_known = np.concatenate((known_modulated_seq_data, modulated_sequence))
 print(modulated_sequence_with_known.shape)
 # saving modulated sequence as npy file
-np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence_with_known)
+np.save(f"Data_files/mod_seq_example_file.npy", modulated_sequence_with_known)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -163,9 +162,9 @@ print(len(waveform))
 # sd.play(overall_sig, sample_rate)
 # sd.wait()  # Wait until the sound has finished playing
 
-np.save(f'Data_files/{symbol_count}symbol_overall_w_noise.npy', overall_sig)
+np.save(f'Data_files/example_file_overall_sent.npy', overall_sig)
 
-output_file = f'Data_files/{symbol_count}symbol_audio_to_test_with_w_noise.wav'
+output_file = f'Data_files/example_file_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(f"Samples of data: {len(concatenated_blocks)}")
