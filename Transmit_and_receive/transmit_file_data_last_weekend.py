@@ -136,8 +136,12 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence 
 
 modulated_sequence = qpsk_modulator(encoded_bitstream) 
+
+known_modulated_seq = known_datachunk[0][lower_bin: upper_bin + 1]
+modulated_sequence_with_known = np.concatenate((known_modulated_seq, modulated_sequence))
+print(modulated_sequence_with_known.shape)
 # saving modulated sequence as npy file
-np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
+np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence_with_known)
 
 #-----------------------------------------------------
 # STEP 4: Create OFDM datachunks and insert information 
