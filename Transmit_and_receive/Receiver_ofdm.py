@@ -50,43 +50,45 @@ matched_filter_first_half = matched_filter_output[:int(len(matched_filter_output
 detected_index = np.argmax(matched_filter_first_half)
 print(detected_index)
 
+
+# Re-sync commented out for now 
 # Use matched filter to take out the chirp from the recording
-chirp_fft = fft(chirp_sig)
-detected_chirp = recording[detected_index-chirp_samples:detected_index]
-detected_fft = fft(detected_chirp)
-channel_fft = detected_fft/chirp_fft
-channel_impulse = ifft(channel_fft)
+# chirp_fft = fft(chirp_sig)
+# detected_chirp = recording[detected_index-chirp_samples:detected_index]
+# detected_fft = fft(detected_chirp)
+# channel_fft = detected_fft/chirp_fft
+# channel_impulse = ifft(channel_fft)
 
-# STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
-# functions to choose the start of the impulse
-def impulse_start_10_90_jump(channel_impulse):   
-    channel_impulse_max = np.max(channel_impulse)
-    channel_impulse_10_percent = 0.1 * channel_impulse_max
-    channel_impulse_90_percent = 0.6 * channel_impulse_max
+# # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
+# # functions to choose the start of the impulse
+# def impulse_start_10_90_jump(channel_impulse):   
+#     channel_impulse_max = np.max(channel_impulse)
+#     channel_impulse_10_percent = 0.1 * channel_impulse_max
+#     channel_impulse_90_percent = 0.6 * channel_impulse_max
 
-    impulse_start = 0
+#     impulse_start = 0
 
-    for i in range(len(channel_impulse) - 1):
-        if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 5] > channel_impulse_90_percent:
-            impulse_start = i + 5
-            break
+#     for i in range(len(channel_impulse) - 1):
+#         if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 5] > channel_impulse_90_percent:
+#             impulse_start = i + 5
+#             break
 
-    if impulse_start > len(channel_impulse) / 2:
-        impulse_start = impulse_start - len(channel_impulse)
+#     if impulse_start > len(channel_impulse) / 2:
+#         impulse_start = impulse_start - len(channel_impulse)
 
-    return impulse_start
-
-
-def impulse_start_max(channel_impulse):
-    impulse_start = np.argmax(abs(channel_impulse))
-    # print(impulse_start)
-    if impulse_start > len(channel_impulse) / 2:
-        impulse_start = impulse_start - len(channel_impulse)
-    # print(impulse_start)
-    return impulse_start
+#     return impulse_start
 
 
-impulse_shift = impulse_start_max(channel_impulse)
+# def impulse_start_max(channel_impulse):
+#     impulse_start = np.argmax(abs(channel_impulse))
+#     # print(impulse_start)
+#     if impulse_start > len(channel_impulse) / 2:
+#         impulse_start = impulse_start - len(channel_impulse)
+#     # print(impulse_start)
+#     return impulse_start
+
+
+# impulse_shift = impulse_start_max(channel_impulse)
 impulse_shift = 0
 
 shifts = range(-100,100)
@@ -221,7 +223,7 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(binary_to_utf8(first_half_systematic_data))
+print(binary_to_utf8(first_half_systematic_data)[:24])
 
 # def extract_metadata(recovered_bitstream):
 #     byte_sequence = bytearray()
@@ -265,9 +267,20 @@ print(binary_to_utf8(first_half_systematic_data))
 
 # extract_metadata(first_half_systematic_data)
 
-# z = parameters.ldpc_z
-# k = parameters.ldpc_k
-# c = ldpc.code('802.16', '1/2', z)
+z = parameters.ldpc_z
+k = parameters.ldpc_k
+c = ldpc.code('802.16', '1/2', z)
+
+y = []
+for i in range(len(first_data_bin)): 
+     y.append( 10 * (.5 - first_data_bin[i]))
+
+y = np.array(y)
+app, it = c.decode(y)
+x = np.load(f"Data_files/example_file_data.npy")
+app = app[:176]
+print(np.nonzero((app < 0) != x))
+
 
 # def LLRs(complex_vals, c_k, sigma_square, A): 
 #     LLR_list = []
