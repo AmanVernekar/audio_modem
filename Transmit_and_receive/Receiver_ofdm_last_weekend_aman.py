@@ -212,6 +212,41 @@ def optimise_channel(shifts, recording, start_chirp_index, end_chirp_index):
     opt_channel, opt_error = recalc_channel(opt_shift)
     return opt_channel, opt_error, opt_shift
 
+# TODO: Functions for LDPC
+
+# function that takes bits (for one datachunk only) and converts it into one datachunk
+def bits_to_datachunk(bits):
+    return datachunk
+
+# function that takes an ofdm datachunk and returns the bits that the datachunk represents
+# reverse of above function
+def datachunk_to_bits(datachunk):
+    return bits
+
+# use ldpc to recover sent bits from the received bits
+def recover_bits(received_bits):
+    return recovered_bits
+
+
+# TODO: Functions for file and metadata
+
+# use the bitstream to extract metadata
+def extract_metadata(recovered_bitstream):
+    return file_name, file_type, file_num_bits
+
+# how many symbols does the given number of bits result in
+def bits_to_num_symbols(num_bits):
+    return num_symbols
+
+# get just the file without metadata or end padding
+def remove_metadata_and_padding(recovered_bitstream):
+    return file_data
+
+# save file so we can open it!
+def save_file(file_name, file_type, file_data):
+    pass
+
+
 
 
 if __name__ == '__main__':
