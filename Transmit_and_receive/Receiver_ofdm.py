@@ -22,19 +22,20 @@ upper_bin = parameters.upper_bin
 symbol_count = parameters.symbol_count
 num_data_bins = upper_bin-lower_bin+1
 num_known_symbols = 1
+chirp_samples = int(sample_rate * chirp_duration)
 
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+# sd.wait()
 
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-#  recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -48,8 +49,7 @@ print(detected_index)
 
 # Use matched filter to take out the chirp from the recording
 chirp_fft = fft(chirp_sig)
-chirp_sample_count = int(sample_rate*chirp_duration)   # number of samples of the chirp 
-detected_chirp = recording[detected_index-chirp_sample_count:detected_index]
+detected_chirp = recording[detected_index-chirp_samples:detected_index]
 detected_fft = fft(detected_chirp)
 channel_fft = detected_fft/chirp_fft
 channel_impulse = ifft(channel_fft)
@@ -92,8 +92,8 @@ total_errors = np.zeros((len(shifts)))
 source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_known_symbols*num_data_bins:]
 
 sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
-data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_duration*sample_rate)
-end_start_sent_signal = (prefix_len*2) + (chirp_duration*sample_rate)
+data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_samples)
+end_start_sent_signal = (prefix_len*2) + (chirp_samples)
 sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
 print("sent data length", len(sent_without_chirp))
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
