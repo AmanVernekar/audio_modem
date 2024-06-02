@@ -23,7 +23,7 @@ chirp_duration = 1.365                       # duration of chirp in seconds
 
 datachunk_len = 4096                        # length of the data in the OFDM symbol (DFT length)
 lower_bin = 85
-upper_bin = 733
+upper_bin = 732
 
 symbol_len = datachunk_len + prefix_len     # total length of symbol
 

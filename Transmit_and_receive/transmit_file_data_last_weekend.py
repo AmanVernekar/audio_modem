@@ -3,6 +3,7 @@ from numpy.fft import fft, ifft
 import sounddevice as sd
 import soundfile as sf
 from scipy.signal import chirp
+from ldpc_jossy.py import ldpc
 
 import parameters
 import our_chirp
@@ -44,7 +45,7 @@ with open(file_path, 'rb') as file:
 # Calculate file size in bits
 file_size_bits = file_size_bytes * 8
 
-# # Print file information
+# # Print file information 
 # print("File Name:", file_name)
 # print("File Size (bytes):", file_size_bytes)
 # print("File Size (bits):", file_size_bits)
@@ -55,7 +56,7 @@ file_size_bits = file_size_bytes * 8
 #-----------------------------------------------------
 
 # currently a WIP, see 'files_to_binary.py'
-# return 'bitsream'
+# return 'bitstream'
 
 #-----------------------------------------------------
 # STEP 2: Encode the binary data using LDPC
@@ -63,18 +64,49 @@ file_size_bits = file_size_bytes * 8
 
 # takes in input 'bitsream'
 # return 'encoded_bitsream'
+bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
+
+# Generate a code 
+z = parameters.ldpc_z
+k = parameters.ldpc_k
+c = ldpc.code('802.16', '1/2', z)
+
+def encode_data(_raw_bin_data): 
+    # The code must have an input of 648 to compute the encoded data,
+    # therefore the raw binary data is first zero padded to ensure it's a multiple of 648. 
+    mod_k = (len(_raw_bin_data) % k)                             # Finds how much we should pad by 
+    zeros = k - mod_k
+    if zeros == k: 
+        zeros = 0    # Stops it adding an extra block of zeros
+    _raw_bin_data = np.pad(_raw_bin_data, (0,zeros), 'constant')      # Pads by num of zeros 
+    chunks_num = int(len(_raw_bin_data) / k)
+    raw_bin_chunks = np.array(np.array_split(_raw_bin_data, chunks_num))
+     
+    # Generates a sequence of coded bits and appends to the list
+    ldpc_list = []
+    for i in range(chunks_num): 
+        ldpc_encoded_chunk = c.encode(raw_bin_chunks[i])
+        ldpc_list.append(ldpc_encoded_chunk)
+    
+    ldpc_encoded_data = np.concatenate(ldpc_list)
+
+    # Returns the data encoded in blocks of k 
+    return ldpc_encoded_data, _raw_bin_data, chunks_num
+
+encoded_bitstream = encode_data(bitstream)[0]
+print("length of ldpc encoded data: ", len(encoded_bitstream))
+np.save(f'Data_files/{symbol_count}ldpc_encoded_data.npy', encoded_bitstream)
 
 #-----------------------------------------------------
 # for testing purposes:
 #-----------------------------------------------------
-encoded_bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
+# encoded_bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 
 #-----------------------------------------------------
 # STEP 3: Modulate as complex symbols using QPSK
 #-----------------------------------------------------
 
 def qpsk_modulator(binary_sequence):
-    mult = 20
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
         binary_sequence = np.append(binary_sequence, 0)
@@ -98,7 +130,7 @@ def qpsk_modulator(binary_sequence):
         elif np.array_equal(bit_pair, [1, 0]):
             modulated_sequence[i//2] = 1 - 1j
     
-    return modulated_sequence * mult
+    return modulated_sequence 
 
 modulated_sequence = qpsk_modulator(encoded_bitstream) 
 # saving modulated sequence as npy file
@@ -109,7 +141,6 @@ np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 #-----------------------------------------------------
 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
-    mult = 20
     #  calculate number of information bins
     num_information_bins = (upper_bin - lower_bin) + 1
 
@@ -128,7 +159,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
-    random_noise = np.random.choice(mult*np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
+    random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
     ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
     ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
     ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
@@ -176,7 +207,7 @@ concatenated_blocks = ofdm_symbols.flatten()
 
 def convert_data_to_waveform(data):
     # normalise to between -1 and 1:
-    max_absolute_val = (1/0.9)*np.max(np.abs(data))
+    max_absolute_val = np.max(np.abs(data))
     waveform = data / max_absolute_val
 
     # play the waveform
