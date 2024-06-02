@@ -14,7 +14,6 @@ datachunk_len = parameters.datachunk_len        # length of data
 lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
 upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
 sample_rate = parameters.sample_rate        # sample rate 
-repetition_factor = 5       # WHAT IS THIS?
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)*2
