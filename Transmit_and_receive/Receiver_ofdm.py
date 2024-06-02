@@ -27,14 +27,14 @@ num_known_symbols = 1
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+# sd.wait()
 
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-#  recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -94,7 +94,7 @@ source_mod_seq = np.load(f"Data_files/mod_seq_{symbol_count}symbols.npy")[num_kn
 sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
 data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_duration*sample_rate)
 end_start_sent_signal = (prefix_len*2) + (chirp_duration*sample_rate)
-sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal + 1]
+sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
 print("sent data length", len(sent_without_chirp))
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
@@ -121,6 +121,8 @@ for g, shift in enumerate(shifts):
 
     # STEP 5: cut into different blocks and get rid of cyclic prefix
     num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+    if g == 0: 
+        print("num_symbols_calc: ", num_symbols)
     time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
     ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
