@@ -2,7 +2,6 @@ import numpy as np
 from numpy.fft import fft, ifft
 import sounddevice as sd
 import soundfile as sf
-from scipy.signal import chirp
 from ldpc_jossy.py import ldpc
 
 import parameters
@@ -17,59 +16,17 @@ datachunk_len = parameters.datachunk_len        # length of data
 sample_rate = parameters.sample_rate        # sample rate 
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
-binary_len = (upper_bin-lower_bin+1)*2
+binary_len = (upper_bin-lower_bin)
 symbol_count = parameters.symbol_count
-
-
-#-----------------------------------------------------
-# STEP 1: Convert file to binary (including preamble)
-#-----------------------------------------------------
-
-#-----------------------------------------------------
-# STEP 1.1: Load file information (binary data, file name, file size)
-#-----------------------------------------------------
-
-file_path = 'Transmit_and_receive/files_to_transmit/example.txt'
-
-# Extract file name
-file_name = file_path.split('/')[-1]  # Extracts the file name from the file path
-
-# File as binary array
-with open(file_path, 'rb') as file:
-    # Read the file content into a binary string
-    file_content = file.read()
-    file_size_bytes = len(file_content)
-    # Convert the binary content to a numpy array
-    file_as_binary_array = np.unpackbits(np.frombuffer(file_content, dtype=np.uint8))
-
-# Calculate file size in bits
-file_size_bits = file_size_bytes * 8
-
-# # Print file information 
-# print("File Name:", file_name)
-# print("File Size (bytes):", file_size_bytes)
-# print("File Size (bits):", file_size_bits)
-# print("Binary array:", file_as_binary_array)
-
-#-----------------------------------------------------
-# STEP 1.2: Add preamble
-#-----------------------------------------------------
-
-# currently a WIP, see 'files_to_binary.py'
-# return 'bitstream'
-
-#-----------------------------------------------------
-# STEP 2: Encode the binary data using LDPC
-#-----------------------------------------------------
-
-# takes in input 'bitsream'
-# return 'encoded_bitsream'
-bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 
 # Generate a code 
 z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
+
+# We want a coded info sequence of symbol_count * binary_len * 2 so we need raw_data of half this 
+raw_bin_data = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len] 
+print("length of raw data: ", len(raw_bin_data)) 
 
 def encode_data(_raw_bin_data): 
     # The code must have an input of 648 to compute the encoded data,
@@ -93,19 +50,16 @@ def encode_data(_raw_bin_data):
     # Returns the data encoded in blocks of k 
     return ldpc_encoded_data, _raw_bin_data, chunks_num
 
-encoded_bitstream = encode_data(bitstream)[0]
-print("length of ldpc encoded data: ", len(encoded_bitstream))
-np.save(f'Data_files/{symbol_count}ldpc_encoded_data.npy', encoded_bitstream)
+# Takes raw binary data and uses an ldpc code to add redundancy
+ldpc_encoded_data = encode_data(raw_bin_data)[0]
+print("length of ldpc encoded data: ", len(ldpc_encoded_data))
+np.save(f'Data_files/{symbol_count}ldpc_encoded_data.npy', ldpc_encoded_data)
 
-#-----------------------------------------------------
-# for testing purposes:
-#-----------------------------------------------------
-# encoded_bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
 
-#-----------------------------------------------------
-# STEP 3: Modulate as complex symbols using QPSK
-#-----------------------------------------------------
+# From the above the part of the encoded data that we care about is from [known_symbol_num * num_data_bins * 2 : same + (num_data_bins *2)]
+# This is what is transmitted and hard decoded so check this first. 
 
+# STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
@@ -130,19 +84,17 @@ def qpsk_modulator(binary_sequence):
         elif np.array_equal(bit_pair, [1, 0]):
             modulated_sequence[i//2] = 1 - 1j
     
+    # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence 
 
-modulated_sequence = qpsk_modulator(encoded_bitstream) 
-# saving modulated sequence as npy file
+modulated_sequence = qpsk_modulator(ldpc_encoded_data) 
+print("length of modulated encoded data: ", len(modulated_sequence))
 np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
 
-#-----------------------------------------------------
-# STEP 4: Create OFDM datachunks and insert information 
-#-----------------------------------------------------
-
+# STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
     #  calculate number of information bins
-    num_information_bins = (upper_bin - lower_bin) + 1
+    num_information_bins = (upper_bin - lower_bin) #    733 - 85 = 648
 
     # append with 0s if not modulated_sequence is not multiple of num_information_bins
     num_zeros = num_information_bins - (len(modulated_sequence) % num_information_bins)
@@ -155,39 +107,29 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     # create new array containing modulated_sequence, where each row corresponds to an OFDM data chunk
     separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
     # separated_mod_sequence = np.array(np.array_split(modulated_sequence, 5))
-    print(f"yo {separated_mod_sequence.shape}") 
+    print(f"modulated data array shape: {separated_mod_sequence.shape}") 
 
     # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
     num_of_symbols = separated_mod_sequence.shape[0]
     random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
-    ofdm_datachunk_array = np.zeros((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
+    ofdm_datachunk_array = np.ones((num_of_symbols, chunk_length), dtype=complex)  
     ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
     ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
 
     # insert information in OFDM blocks: 
-    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
-    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
+    ofdm_datachunk_array[:, lower_bin:upper_bin] = separated_mod_sequence  # populates first half of block
+    ofdm_datachunk_array[:, chunk_length-(upper_bin-1):chunk_length-(lower_bin-1)] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
  
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
-# print(ofdm_datachunks.shape)
+print("ofdm datachunks shape", ofdm_datachunks.shape)
 
-#-----------------------------------------------------
-# STEP 5: Convert OFDM datachunks to time signal (including cyclic prefix)
-#-----------------------------------------------------
-
-#-----------------------------------------------------
-# STEP 5.1: IDFT each OFDM symbol
-#-----------------------------------------------------
-
+# STEP 4: IDFT each OFDM symbol
 time_domain_datachunks = ifft(ofdm_datachunks, axis=1)  # applies ifft to each row
 time_domain_datachunks = time_domain_datachunks.real  # takes real part of ifft
 
-#-----------------------------------------------------
-# STEP 5.2: add cyclic prefix to each part
-#-----------------------------------------------------
-
+# STEP 5: add cyclic prefix to each part
 def add_cyclic_prefix(ofdm_datachunks, prefix_length):
     block_prefixes = ofdm_datachunks[:, -prefix_length:]
     ofdm_symbols = np.concatenate((block_prefixes, ofdm_datachunks), axis=1)
@@ -195,44 +137,27 @@ def add_cyclic_prefix(ofdm_datachunks, prefix_length):
 
 ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, prefix_len)
 
-#-----------------------------------------------------
-# STEP 5.3: flatten all time domain blocks into one array
-#-----------------------------------------------------
-
+# STEP 6: flatten all time domain blocks into one array
 concatenated_blocks = ofdm_symbols.flatten()
 
-#-----------------------------------------------------
-# STEP 5.4: Convert array to waveform !!DO WE DO THIS HERE?????
-#-----------------------------------------------------
-
-def convert_data_to_waveform(data):
+# STEP 7:convert to audio file to transmit across channel. add chirp beforehand etc.
+def convert_data_to_audio(data, sampling_rate):
     # normalise to between -1 and 1:
     max_absolute_val = np.max(np.abs(data))
     waveform = data / max_absolute_val
 
     # play the waveform
-    # sample_rate = parameters.sample_rate
     # sd.play(waveform, sampling_rate)
     # sd.wait()
     # np.save("rep_waveform.npy", waveform)
     return waveform 
 
-waveform = convert_data_to_waveform(concatenated_blocks, sample_rate)
-
-#-----------------------------------------------------
-# STEP 6: Add chirps and known OFDM blocks as per BEEEP standard
-#-----------------------------------------------------
-
 chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
 
-
+waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
 overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform)
 print(len(waveform))
-
-#-----------------------------------------------------
-# STEP 7: Save the final signal as a wav file
-#-----------------------------------------------------
 
 # Play the audio data
 # sd.play(overall_sig, sample_rate)

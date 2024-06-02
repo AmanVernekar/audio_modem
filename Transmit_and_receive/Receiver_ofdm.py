@@ -156,12 +156,11 @@ sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
-mult = 20
 
-colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
-            np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
-            np.where(source_mod_seq == mult*(-1-1j), "m", #"m"
-            np.where(source_mod_seq == mult*(1-1j), "y",  #"y"
+colors = np.where(source_mod_seq == (1+1j), "b", #"b"
+            np.where(source_mod_seq == (-1+1j), "c", #"c"
+            np.where(source_mod_seq == (-1-1j), "m", #"m"
+            np.where(source_mod_seq == (1-1j), "y",  #"y"
             "Error"))))
 
 def estimate_channel_from_known_ofdm(_num_known_symbols):
@@ -265,7 +264,7 @@ for g, shift in enumerate(shifts):
     # Adjust layout to prevent overlap
     # plt.tight_layout(rect=[0, 0, 1, 0.95])
     # plt.show()
-d
+
 plt.plot(shifts, total_errors)
 plt.axvline(shifts[np.argmin(total_errors)])
 plt.ylabel("Bit error percentage (%)")
