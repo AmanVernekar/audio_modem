@@ -213,7 +213,7 @@ A = 10
 LLRs_block_1 = LLRs(data[0], c_k, sigma_square, A)
 decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
 
-compare1 = np.load("Data_files/binary_data.npy")[648*5:6*648]
+compare1 = np.load("Data_files/binary_data.npy")[648*5:6*648]   
 compare2 = decoded_raw_data[:648]
 
 def error(compare1, compare2, test): 

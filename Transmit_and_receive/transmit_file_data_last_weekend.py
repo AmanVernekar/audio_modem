@@ -227,7 +227,7 @@ chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
 
 
-overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform)
+overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform) + chirp_w_prefix_suffix 
 print(len(waveform))
 
 #-----------------------------------------------------
