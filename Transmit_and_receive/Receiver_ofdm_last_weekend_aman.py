@@ -238,6 +238,10 @@ def extract_metadata(recovered_bitstream):
 def bits_to_num_symbols(num_bits):
     return num_symbols
 
+# how many bits does the given number of symbols result in
+def num_symbols_to_bits(num_symbols):
+    return num_bits
+
 # get just the file without metadata or end padding
 def remove_metadata_and_padding(recovered_bitstream):
     return file_data
@@ -270,7 +274,6 @@ if __name__ == '__main__':
 
     recovered_bitstream = np.array([])
 
-    # first use channel coeffs to obtain symbol 1 (symbol 0 is known)
     for symbol_index in range(1, total_num_symbols):
         received_datachunk = ofdm_datachunks[symbol_index]/channel_coefficients
         received_bits = datachunk_to_bits(received_datachunk)
