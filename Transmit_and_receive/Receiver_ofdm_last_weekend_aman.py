@@ -232,15 +232,17 @@ def recover_bits(received_bits):
 
 # use the bitstream to extract metadata
 def extract_metadata(recovered_bitstream):
+    \0\0FileName.type\0\0numBits\0\0
+    
     return file_name, file_type, file_num_bits
 
 # how many symbols does the given number of bits result in
 def bits_to_num_symbols(num_bits):
-    return num_symbols
+    return int(num_bits/(2 * num_data_bins))
 
 # how many bits does the given number of symbols result in
 def num_symbols_to_bits(num_symbols):
-    return num_bits
+    return num_data_bins * num_symbols * 2
 
 # get just the file without metadata or end padding
 def remove_metadata_and_padding(recovered_bitstream):
