@@ -139,7 +139,7 @@ def plot_single_symbol(data, index):
                 np.where(_source_mod_seq == mult*(-1-1j), "m", #"m"
                 np.where(_source_mod_seq == mult*(1-1j), "y",  #"y"
                 "Error"))))
-    plt.title(f"OFDM Symbol {index + 1}\nerror % = {error*num_data_bins/100}")
+    plt.title(f"OFDM Symbol {index + 1}\nerror % = {error*100/num_data_bins}")
     plt.scatter(x, y, c=colors)
     plt.show()
 
