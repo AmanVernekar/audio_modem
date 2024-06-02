@@ -5,6 +5,7 @@ import sounddevice as sd
 from scipy.signal import chirp, correlate, find_peaks
 from scipy.interpolate import make_interp_spline
 from scipy.ndimage import gaussian_filter1d
+from ldpc_jossy.py import ldpc
 
 import parameters
 import our_chirp
@@ -32,6 +33,10 @@ num_known_symbols = parameters.num_known_symbols     # number of known symbols u
 
 alpha = parameters.alpha                             # weight for on the fly channel estimation
 shifts = range(-200,200)
+
+ldpc_z = parameters.ldpc_z
+ldpc_k = parameters.ldpc_k
+ldpc_c = ldpc.code('802.16', '1/2', ldpc_z)
 
 testing = False
 
@@ -122,6 +127,11 @@ def error_in_symbol(symbol_index, received_data, source_data):
     return num_data_bins - correct
 
 # TODO: separate functions to plot full constellation and required symbols, with error rate
+def plot_single_symbol(data, source_data, index):
+    x = data.real
+    y = data.imag
+    error = error_in_symbol(index, data, source_mod_seq)
+
 def plot_constellation(symbol_indices, colors, data):
     # for mask_col in ["b", "c", "m", "y"]:
     # mask_col = "b"
@@ -227,6 +237,34 @@ def datachunk_to_bits(datachunk):
 def recover_bits(received_bits):
     return recovered_bits
 
+def LLRs(complex_vals, c_k, sigma_square, A): 
+    LLR_list = []
+    for i in range(len(complex_vals)): 
+        c_conj = c_k[i].conjugate()
+        L_1 = (A*c_k[i]*c_conj*np.sqrt(2)*complex_vals[i].imag) / (sigma_square)
+        LLR_list.append(L_1)
+        L_2 = (A*c_k[i]*c_conj*np.sqrt(2)*complex_vals[i].real) / (sigma_square)
+        LLR_list.append(L_2)
+
+    return LLR_list
+
+def decode_data(LLRs, chunks_num): 
+    LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+     
+    decoded_list = []
+    for i in range(chunks_num): 
+        decoded_chunk, it = ldpc_c.decode(LLRs_split[i])
+        decoded_list.append(decoded_chunk)
+    
+    decoded_data = np.concatenate(decoded_list)
+    threshold = 0.0
+    decoded_data = (decoded_data < threshold).astype(int)
+
+    decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
+    decoded_raw_data = np.concatenate(decoded_data_split)
+
+    return decoded_raw_data
+
 
 # TODO: Functions for file and metadata
 
@@ -278,6 +316,15 @@ if __name__ == '__main__':
 
     for symbol_index in range(1, total_num_symbols):
         received_datachunk = ofdm_datachunks[symbol_index]/channel_coefficients
+
+        c_k = channel_coefficients
+        sigma_square = 1
+        A = 10
+        LLRs_block_1 = LLRs(ofdm_datachunks[symbol_index], c_k, sigma_square, A)
+        decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
+        print(decoded_raw_data)
+        exit()
+        
         received_bits = datachunk_to_bits(received_datachunk)
         recovered_bits = recover_bits(received_bits)
         recovered_bitstream = np.append(recovered_bitstream, recovered_bits)
