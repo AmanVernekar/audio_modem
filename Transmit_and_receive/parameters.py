@@ -16,6 +16,7 @@ chirp_start_freq = 761.72                    # chirp start freq (Hz)
 chirp_end_freq = 8824.22                     # chirp end freq (Hz)
 chirp_type = "linear"                        # chirp type
 chirp_duration = 1.365                       # duration of chirp in seconds
+chirp_reduction = 0.1                        # multiplication factor to reduce chirp volume
 
 #-----------------------------------------------------
 # OFDM parameters

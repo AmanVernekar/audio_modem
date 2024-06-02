@@ -19,6 +19,9 @@ lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)*2
 symbol_count = parameters.symbol_count
+known_datachunk = np.array(parameters.sent_known_datachunks[0])
+known_datachunk = known_datachunk.reshape(1, 4096)
+
 
 
 #-----------------------------------------------------
@@ -64,7 +67,7 @@ file_size_bits = file_size_bytes * 8
 
 # takes in input 'bitsream'
 # return 'encoded_bitsream'
-bitstream = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
+bitstream = np.load("Data_files/binary_data.npy")[:(symbol_count-1)*int((binary_len/2))] # symbol count - 1 because we need 1 known block
 
 # Generate a code 
 z = parameters.ldpc_z
@@ -172,6 +175,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
 # print(ofdm_datachunks.shape)
+ofdm_datachunks = np.concatenate((known_datachunk, ofdm_datachunks), axis=0)
 
 #-----------------------------------------------------
 # STEP 5: Convert OFDM datachunks to time signal (including cyclic prefix)
