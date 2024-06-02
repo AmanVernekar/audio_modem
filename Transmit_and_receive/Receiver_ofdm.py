@@ -3,12 +3,9 @@ from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
 import sounddevice as sd
 from scipy.signal import chirp, correlate
-from scipy.interpolate import make_interp_spline
-from scipy.ndimage import gaussian_filter1d
 
 import parameters
 import our_chirp
-
 
 datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
 prefix_len = parameters.prefix_len                   # length of cyclic prefix
@@ -30,14 +27,14 @@ num_known_symbols = 5
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-sd.wait()
+# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+# sd.wait()
 
-recording = recording.flatten()  # Flatten to 1D array if necessary
-np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+# recording = recording.flatten()  # Flatten to 1D array if necessary
+# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -45,27 +42,6 @@ np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", r
 # this means that the max index detected is now at the end of the chirp
 matched_filter_output = correlate(recording, chirp_sig, mode='full')
 
-# Create plots of the recording and matched filter response note that the x axes are different. 
-t_rec = np.arange(0, len(recording))
-t_mat = np.arange(0, len(matched_filter_output))
-# fig, (ax1, ax2) = plt.subplots(2, 1)
-
-# ax1.plot(t_rec, recording, label='Recording', color='b')
-# ax1.set_xlabel('X-axis 1')
-# ax1.set_ylabel('Y-axis 1')
-# ax1.legend()
-# ax1.set_title('First Plot')
-
-# ax2.plot(t_mat, matched_filter_output, label='Matched filter output', color='r')
-# ax2.set_xlabel('X-axis 2')
-# ax2.set_ylabel('Y-axis 2')
-# ax2.legend()
-# ax2.set_title('Second Plot')
-
-# plt.tight_layout()
-
-# plt.plot(abs(matched_filter_output))
-# plt.show()
 
 detected_index = np.argmax(matched_filter_output)
 print(detected_index)
@@ -104,44 +80,12 @@ def impulse_start_10_90_jump(channel_impulse):
 
 def impulse_start_max(channel_impulse):
     impulse_start = np.argmax(abs(channel_impulse))
-    print(impulse_start)
+    # print(impulse_start)
     if impulse_start > len(channel_impulse) / 2:
         impulse_start = impulse_start - len(channel_impulse)
-    print(impulse_start)
+    # print(impulse_start)
     return impulse_start
 
-
-def impulse_start_smoothing(channel_impulse):
-
-    # Dataset
-    x = np.arange(0, len(channel_impulse), 1)
-    y = abs(channel_impulse)
-
-    X_Y_Spline = make_interp_spline(x, y)
-
-    # Returns evenly spaced numbers
-    # over a specified interval.
-    X_ = np.linspace(x.min(), x.max(), len(channel_impulse))
-    Y_ = X_Y_Spline(X_)
-
-    # Plotting the Graph
-    plt.plot(X_, Y_)
-    plt.title("Plot Smooth Curve Using the scipy.interpolate.make_interp_spline() Class")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.show()
-
-
-def impulse_start_guassian(channel_impulse): 
-    data = channel_impulse
-
-    # Apply Gaussian smoothing
-    # sigma determines the standard deviation of the Gaussian kernel
-    # window size +- 3 data points can be interpreted as sigma = 1 for a standard Gaussian kernel
-    smoothed_data = gaussian_filter1d(data, sigma=1)
-
-    print("Original Data: ", data)
-    print("Smoothed Data: ", smoothed_data)
 
 impulse_shift = impulse_start_max(channel_impulse)
 print(f'{impulse_shift=}')
@@ -156,13 +100,13 @@ sent_signal = np.load(f'Data_files/{symbol_count}symbol_overall_w_noise.npy')
 sent_without_chirp = sent_signal[-symbol_count*symbol_len:]
 sent_datachunks = np.array(np.array_split(sent_without_chirp, symbol_count))[:, prefix_len:]
 
-mult = 20
-
-colors = np.where(source_mod_seq == mult*(1+1j), "b", #"b"
-            np.where(source_mod_seq == mult*(-1+1j), "c", #"c"
-            np.where(source_mod_seq == mult*(-1-1j), "m", #"m"
-            np.where(source_mod_seq == mult*(1-1j), "y",  #"y"
+colors = np.where(source_mod_seq == (1+1j), "b", 
+            np.where(source_mod_seq == (-1+1j), "c", 
+            np.where(source_mod_seq == (-1-1j), "m", 
+            np.where(source_mod_seq == (1-1j), "y", 
             "Error"))))
+
+print("colours check: ", colors[:10])
 
 def estimate_channel_from_known_ofdm(_num_known_symbols):
         channel_estimates = np.zeros((_num_known_symbols, datachunk_len), dtype='complex')
@@ -171,8 +115,8 @@ def estimate_channel_from_known_ofdm(_num_known_symbols):
             channel_estimates[i] = channel_fft
         
         average_channel_estimate = np.mean(channel_estimates, axis=0)
-        print(channel_estimates.shape)
-        print(average_channel_estimate.shape)
+        # print(channel_estimates.shape)
+        # print(average_channel_estimate.shape)
         return average_channel_estimate
 
 for g, shift in enumerate(shifts):
@@ -265,15 +209,42 @@ for g, shift in enumerate(shifts):
     # Adjust layout to prevent overlap
     # plt.tight_layout(rect=[0, 0, 1, 0.95])
     # plt.show()
-d
+
 plt.plot(shifts, total_errors)
 plt.axvline(shifts[np.argmin(total_errors)])
 plt.ylabel("Bit error percentage (%)")
 plt.xlabel("Index")
 plt.show()
 
-print(shifts[np.argmin(total_errors)])
+
+best_shift = shifts[np.argmin(total_errors)]
+print(best_shift)
 print(np.min(total_errors))
+
+
+data_start_index = detected_index+best_shift+prefix_len
+recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+
+# STEP 5: cut into different blocks and get rid of cyclic prefix
+
+num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+
+time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+
+ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+
+channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
+
+ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+
+first_data = data[0]
+first_colours = colors[:num_data_bins]
+
+
+plt.scatter(first_data.real, first_data.imag, c=first_colours)
+plt.show()
+
 
 
 # plt.scatter(data.real, data.imag, c=colors)
