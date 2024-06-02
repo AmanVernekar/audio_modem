@@ -58,7 +58,28 @@ def generate_binary_preamble(file_name, file_size_bits):
 preamble = generate_binary_preamble(file_name, file_size_bits)
 preamble = np.array(preamble)
 full_bin_data = np.concatenate((preamble, file_as_binary_array))
+print(full_bin_data)
 np.save(f"Data_files/example_file_data.npy", full_bin_data)
+
+
+def binary_to_utf8(binary_list):
+    # Join the list of integers into a single string
+    binary_str = ''.join(str(bit) for bit in binary_list)
+    
+    # Split the binary string into 8-bit chunks (bytes)
+    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
+    
+    # Convert each byte to its corresponding UTF-8 character
+    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
+    
+    # Join the UTF-8 characters to form the final string
+    utf8_string = ''.join(utf8_chars)
+    
+    return utf8_string
+
+full_utf8 = binary_to_utf8(full_bin_data)
+print(full_utf8)
+
 
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()

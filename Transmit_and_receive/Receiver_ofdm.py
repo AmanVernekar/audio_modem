@@ -100,6 +100,7 @@ end_start_sent_signal = (prefix_len*2) + (chirp_samples)
 sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
 print("sent data length", len(sent_without_chirp))
 num_symbols = int(len(sent_without_chirp)/symbol_len)
+print("num of symbols: ", num_symbols)
 sent_datachunks = np.array(np.array_split(sent_without_chirp, num_symbols))[:, prefix_len:]
 
 colors = np.where(source_mod_seq == (1+1j), "b", 
@@ -186,6 +187,83 @@ plt.axhline(y=0, color='k')
 plt.axvline(x=0, color='k')
 plt.show()
 
+first_data = list(first_data)
+first_data_bin = []
+for i in range(len(first_data)): 
+    if first_data[i].real > 0 and first_data[i].imag > 0:
+         first_data_bin.append(0)
+         first_data_bin.append(0)
+    elif first_data[i].real < 0 and first_data[i].imag > 0:
+         first_data_bin.append(0)
+         first_data_bin.append(1)
+    elif first_data[i].real < 0 and first_data[i].imag < 0:
+         first_data_bin.append(1)
+         first_data_bin.append(1)
+    elif first_data[i].real > 0 and first_data[i].imag < 0:
+         first_data_bin.append(1)
+         first_data_bin.append(0)
+
+first_half_systematic_data = first_data_bin[:num_data_bins]
+print("binary data len: ", len(first_half_systematic_data))
+
+def binary_to_utf8(binary_list):
+    # Join the list of integers into a single string
+    binary_str = ''.join(str(bit) for bit in binary_list)
+    
+    # Split the binary string into 8-bit chunks (bytes)
+    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
+    
+    # Convert each byte to its corresponding UTF-8 character
+    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
+    
+    # Join the UTF-8 characters to form the final string
+    utf8_string = ''.join(utf8_chars)
+    
+    return utf8_string
+
+print(binary_to_utf8(first_half_systematic_data))
+
+# def extract_metadata(recovered_bitstream):
+#     byte_sequence = bytearray()
+
+#     # Convert the bitstream back to bytes (if this takes long then redesign this function)
+#     for i in range(0, len(recovered_bitstream), 8):
+#         byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+#         byte_sequence.append(int(byte, 2))
+
+#     # # convert byte sequence to ascii
+#     # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
+#     # print(byte_as_ascii)
+
+#     # Extract file name and type
+#     null_byte_count = 0
+#     file_name_and_type = ""
+#     for byte in byte_sequence:
+#         if byte == 0:
+#             null_byte_count += 1
+#             if null_byte_count == 3:
+#                 break
+#         else:
+#             file_name_and_type += chr(byte)
+    
+#     file_parts = file_name_and_type.split('.')
+#     file_name = file_parts[0]  # The part before the dot
+#     file_type = file_parts[1]  # The part after the dot
+
+#     # Extract file size in bits
+#     file_size_bits = ""
+#     for byte in byte_sequence[len(file_name_and_type) + 4:]:
+#         if byte == 0:
+#             break
+#         file_size_bits += chr(byte)
+
+#     # Convert file size back to integer
+#     file_size_bits = int(file_size_bits)
+
+
+#     return file_name, file_type, file_size_bits
+
+# extract_metadata(first_half_systematic_data)
 
 # z = parameters.ldpc_z
 # k = parameters.ldpc_k
