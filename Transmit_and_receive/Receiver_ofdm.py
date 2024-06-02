@@ -23,19 +23,21 @@ symbol_count = parameters.symbol_count
 num_data_bins = upper_bin-lower_bin+1
 num_known_symbols = 1
 chirp_samples = int(sample_rate * chirp_duration)
+known_datachunk = parameters.known_datachunk
+known_datachunk = known_datachunk.reshape(1, 4096)
 
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-# sd.wait()
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+sd.wait()
 
-# recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy", recording)
 
 #  Using saved recording
-recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
+# recording = np.load(f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy")
 
 # STEP 2: initially synchronise
 
@@ -105,7 +107,7 @@ colors = np.where(source_mod_seq == (1+1j), "b",
             "Error"))))
 
 
-def estimate_channel_from_known_ofdm(_num_known_symbols):
+def estimate_channel_from_known_ofdm_old(_num_known_symbols):
         channel_estimates = np.zeros((_num_known_symbols, datachunk_len), dtype='complex')
         for i in range(_num_known_symbols):
             channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
@@ -113,6 +115,10 @@ def estimate_channel_from_known_ofdm(_num_known_symbols):
         
         average_channel_estimate = np.mean(channel_estimates, axis=0)
         return average_channel_estimate
+
+def estimate_channel_from_known_ofdm():
+     channel_fft = ofdm_datachunks[0]/known_datachunk[0]
+     return channel_fft
 
 for g, shift in enumerate(shifts):
 
@@ -126,7 +132,7 @@ for g, shift in enumerate(shifts):
     time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
     ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
-    channel_estimate = estimate_channel_from_known_ofdm(num_known_symbols)
+    channel_estimate = estimate_channel_from_known_ofdm()
 
     ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
     data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511

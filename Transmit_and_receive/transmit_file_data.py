@@ -16,9 +16,11 @@ lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 binary_len = (upper_bin-lower_bin+1)
 symbol_count = parameters.symbol_count
+known_datachunk = parameters.known_datachunk
+known_datachunk = known_datachunk.reshape(1, 4096)
 
 
-coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len*2]
+coded_info_sequence = np.load("Data_files/binary_data.npy")[:(symbol_count-1)*binary_len*2] # symbol - 1 because of the known one
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
@@ -49,9 +51,12 @@ def qpsk_modulator(binary_sequence):
     return modulated_sequence
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
-print(modulated_sequence)
-print(len(modulated_sequence))
-np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence)
+
+known_modulated_seq_data = known_datachunk[0][lower_bin: upper_bin + 1]
+modulated_sequence_with_known = np.concatenate((known_modulated_seq_data, modulated_sequence))
+print(modulated_sequence_with_known.shape)
+# saving modulated sequence as npy file
+np.save(f"Data_files/mod_seq_{symbol_count}symbols.npy", modulated_sequence_with_known)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
 def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
@@ -86,6 +91,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
+ofdm_datachunks = np.concatenate((known_datachunk, ofdm_datachunks), axis=0)
 print(ofdm_datachunks.shape)
 
 # STEP 4: IDFT each OFDM symbol
