@@ -11,18 +11,14 @@ import our_chirp
 
 prefix_len = parameters.prefix_len         # cyclic prefix length
 datachunk_len = parameters.datachunk_len        # length of data  
-lower_freq = 1000           # lower frequency used for data DO WE NEED THESE
-upper_freq = 11000          # upper frequency used for data DO WE NEED THESE  
 sample_rate = parameters.sample_rate        # sample rate 
-repetition_factor = 5       # WHAT IS THIS?
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
-binary_len = (upper_bin-lower_bin+1)*2
+binary_len = (upper_bin-lower_bin+1)
 symbol_count = parameters.symbol_count
 
-# WHAT IS THE REPETITION?
-coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len]
-# rep_sequence = np.repeat(coded_info_sequence, repetition_factor)
+
+coded_info_sequence = np.load("Data_files/binary_data.npy")[:symbol_count*binary_len*2]
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
@@ -110,7 +106,7 @@ concatenated_blocks = ofdm_symbols.flatten()
 # STEP 7:convert to audio file to transmit across channel. add chirp beforehand etc.
 def convert_data_to_audio(data, sampling_rate):
     # normalise to between -1 and 1:
-    max_absolute_val = (1/0.9)*np.max(np.abs(data))
+    max_absolute_val = np.max(np.abs(data))
     waveform = data / max_absolute_val
 
     # play the waveform

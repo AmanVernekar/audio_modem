@@ -88,7 +88,6 @@ def impulse_start_max(channel_impulse):
 
 
 impulse_shift = impulse_start_max(channel_impulse)
-print(f'{impulse_shift=}')
 impulse_shift = 0
 
 shifts = range(-200,200)
