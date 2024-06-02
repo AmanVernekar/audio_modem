@@ -3,8 +3,6 @@ from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
 import sounddevice as sd
 from scipy.signal import chirp, correlate, find_peaks
-from scipy.interpolate import make_interp_spline
-from scipy.ndimage import gaussian_filter1d
 from ldpc_jossy.py import ldpc
 
 import parameters
@@ -59,9 +57,8 @@ else:
     rec_duration = parameters.rec_duration_real
     sent_known_datachunks = parameters.sent_known_datachunks
 
-existing_recording = True
+existing_recording = False
 recording_filename = f"Data_files/{symbol_count}symbol_recording_to_test_with_w_noise.npy"
-
 
 
 
