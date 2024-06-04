@@ -230,47 +230,47 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(binary_to_utf8(first_half_systematic_data)[:24])
+print(binary_to_utf8(first_half_systematic_data))
 
-# def extract_metadata(recovered_bitstream):
-#     byte_sequence = bytearray()
+def extract_metadata(recovered_bitstream):
+    byte_sequence = bytearray()
 
-#     # Convert the bitstream back to bytes (if this takes long then redesign this function)
-#     for i in range(0, len(recovered_bitstream), 8):
-#         byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
-#         byte_sequence.append(int(byte, 2))
+    # Convert the bitstream back to bytes (if this takes long then redesign this function)
+    for i in range(0, len(recovered_bitstream), 8):
+        byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+        byte_sequence.append(int(byte, 2))
 
-#     # # convert byte sequence to ascii
-#     # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
-#     # print(byte_as_ascii)
+    # # convert byte sequence to ascii
+    # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
+    # print(byte_as_ascii)
 
-#     # Extract file name and type
-#     null_byte_count = 0
-#     file_name_and_type = ""
-#     for byte in byte_sequence:
-#         if byte == 0:
-#             null_byte_count += 1
-#             if null_byte_count == 3:
-#                 break
-#         else:
-#             file_name_and_type += chr(byte)
+    # Extract file name and type
+    null_byte_count = 0
+    file_name_and_type = ""
+    for byte in byte_sequence:
+        if byte == 0:
+            null_byte_count += 1
+            if null_byte_count == 3:
+                break
+        else:
+            file_name_and_type += chr(byte)
     
-#     file_parts = file_name_and_type.split('.')
-#     file_name = file_parts[0]  # The part before the dot
-#     file_type = file_parts[1]  # The part after the dot
+    file_parts = file_name_and_type.split('.')
+    file_name = file_parts[0]  # The part before the dot
+    file_type = file_parts[1]  # The part after the dot
 
-#     # Extract file size in bits
-#     file_size_bits = ""
-#     for byte in byte_sequence[len(file_name_and_type) + 4:]:
-#         if byte == 0:
-#             break
-#         file_size_bits += chr(byte)
+    # Extract file size in bits
+    file_size_bits = ""
+    for byte in byte_sequence[len(file_name_and_type) + 4:]:
+        if byte == 0:
+            break
+        file_size_bits += chr(byte)
 
-#     # Convert file size back to integer
-#     file_size_bits = int(file_size_bits)
+    # Convert file size back to integer
+    file_size_bits = int(file_size_bits)
 
 
-#     return file_name, file_type, file_size_bits
+    return file_name, file_type, file_size_bits
 
 # extract_metadata(first_half_systematic_data)
 
@@ -280,7 +280,7 @@ c = ldpc.code('802.16', '1/2', z)
 
 y = []
 for i in range(len(first_data_bin)): 
-     y.append( 0.1 * (.5 - first_data_bin[i]))
+     y.append( 5 * (.5 - first_data_bin[i]))
 
 y = np.array(y)
 app, it = c.decode(y)
@@ -311,10 +311,11 @@ error(compare2, compare3, '2 against 3')
 def LLRs(complex_vals, c_k, sigma_square, A): 
     LLR_list = []
     for i in range(len(complex_vals)): 
-        c_conj = c_k[i].conjugate()
-        L_1 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].imag) / (sigma_square)
+        # c_conj = c_k[i].conjugate()
+        c_squared = (np.abs(c_k[i]))**2
+        L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
         LLR_list.append(L_1)
-        L_2 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].real) / (sigma_square)
+        L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
         LLR_list.append(L_2)
 
     return LLR_list
@@ -328,8 +329,8 @@ def decode_data(LLRs, chunks_num):
         decoded_list.append(decoded_chunk)
     
     decoded_data = np.concatenate(decoded_list)
-    threshold = 0.0
-    decoded_data = (decoded_data < threshold).astype(int)
+    # decoded_data = (decoded_data < 0).astype(int)
+    decoded_data = np.where(decoded_data < 0, 1, 0)
 
     decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
     decoded_raw_data = np.concatenate(decoded_data_split)
@@ -354,11 +355,12 @@ print("A: ", A)
 
 sigma_vals = np.linspace(0.01, 5, 20)
 
-# for i in sigma_vals: 
-#      LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
-#      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
-#      compare4 = decoded_raw_data
-#      error(compare2, compare4, '2 against 4')
+for i in sigma_vals: 
+     LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
+     print(LLRs_block_1[:10])
+     decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
+     compare4 = decoded_raw_data
+     error(compare2, compare4, '2 against 4')
 
 
 
