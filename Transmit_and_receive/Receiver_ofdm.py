@@ -20,7 +20,6 @@ chirp_duration = parameters.chirp_duration           # duration of chirp in seco
 chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
 chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
 chirp_type = parameters.chirp_type                   # chirp type
-recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 num_data_bins = upper_bin-lower_bin+1
@@ -109,6 +108,7 @@ end_start_sent_signal = (prefix_len*2) + (chirp_samples)
 sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
 print("sent data length", len(sent_without_chirp))
 num_symbols = int(len(sent_without_chirp)/symbol_len)
+recording_data_len = num_symbols * symbol_len
 print("num of symbols: ", num_symbols)
 sent_datachunks = np.array(np.array_split(sent_without_chirp, num_symbols))[:, prefix_len:]
 
@@ -176,7 +176,7 @@ print(np.min(total_errors))
 data_start_index = detected_index+best_shift+prefix_len
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 
-# num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
@@ -319,6 +319,7 @@ sigma_vals = np.linspace(0.01, 5, 20)
 
 num_unknown_symbols = num_symbols - num_known_symbols
 print(num_unknown_symbols)
+recovered_bitstream_systematic = np.zeros(2*num_data_bins*(num_unknown_symbols))
 recovered_bitstream_hard = np.zeros(2*num_data_bins*(num_unknown_symbols))
 recovered_bitstream_soft = np.zeros(2*num_data_bins*(num_unknown_symbols))
 
@@ -348,6 +349,8 @@ for symbol_index in range(num_known_symbols, num_symbols):
     recovered_bitstream_hard[symbol_index*648:(symbol_index+1)*648] = app[:648]
     sent_datachunk = encoded_binary_to_ofdm_datachunk(app)
 
+    recovered_bitstream_systematic[symbol_index*648:(symbol_index+1)*648] = symbol_half_systematic_data
+
     # Soft decoding 
     sigma_square = 1 
     c_k = channel_estimate[lower_bin : upper_bin + 1]
@@ -363,9 +366,10 @@ for symbol_index in range(num_known_symbols, num_symbols):
 
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 compare1 = x 
-compare2 = recovered_bitstream_hard
-print(compare2.shape, "shape")
-compare3 = recovered_bitstream_soft
+compare2 = recovered_bitstream_systematic
+compare3 = recovered_bitstream_hard
+compare4 = recovered_bitstream_soft
+
 
 def error(compare1, compare2, test): 
     wrong = 0
@@ -377,6 +381,7 @@ def error(compare1, compare2, test):
 
 error(compare1, compare2, '1 against 2')
 error(compare1, compare3, '1 against 3')
+error(compare1, compare4, '1 against 4')
 
 np.save('recovered_bitstream_hard.npy', recovered_bitstream_hard)
 np.save('recovered_bitstream_soft.npy', recovered_bitstream_soft)
