@@ -32,7 +32,7 @@ alpha = 0.1
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
  
 if do_real_recording:
     # Using real recording
@@ -319,11 +319,11 @@ sigma_vals = np.linspace(0.01, 5, 20)
 
 num_unknown_symbols = num_symbols - num_known_symbols
 print(num_unknown_symbols)
-recovered_bitstream_systematic = np.zeros(2*num_data_bins*(num_unknown_symbols))
-recovered_bitstream_hard = np.zeros(2*num_data_bins*(num_unknown_symbols))
-recovered_bitstream_soft = np.zeros(2*num_data_bins*(num_unknown_symbols))
+recovered_bitstream_systematic = np.zeros(num_data_bins*(num_unknown_symbols))
+recovered_bitstream_hard = np.zeros(num_data_bins*(num_unknown_symbols))
+recovered_bitstream_soft = np.zeros(num_data_bins*(num_unknown_symbols))
 
-for symbol_index in range(num_known_symbols, num_symbols):
+for symbol_index in range(num_known_symbols, num_symbols-1):
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
     symbol_data_complex = received_datachunk[lower_bin:upper_bin+1]
 
@@ -365,10 +365,12 @@ for symbol_index in range(num_known_symbols, num_symbols):
 
 
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-compare1 = x[:648]
-compare2 = recovered_bitstream_systematic[:648]
-compare3 = recovered_bitstream_hard[:648]
-compare4 = recovered_bitstream_soft[:648]
+print(np.count_nonzero(x-recovered_bitstream_hard), "yo", sep='   ')
+
+compare1 = x
+compare2 = recovered_bitstream_systematic
+compare3 = recovered_bitstream_hard
+compare4 = recovered_bitstream_soft
 
 
 def error(compare1, compare2, test): 
