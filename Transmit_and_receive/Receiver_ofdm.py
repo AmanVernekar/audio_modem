@@ -334,7 +334,7 @@ def decode_data(LLRs, chunks_num):
     return decoded_raw_data
 
 c_k = channel_estimate[lower_bin:upper_bin+1]
-sigma_square = 0.2
+# sigma_square = 0.2
 
 def average_magnitude(complex_array):
     # Calculate the magnitudes of the complex numbers
@@ -353,7 +353,7 @@ sigma_vals = [1]                      #    np.linspace(0.01, 5, 20)
 complex_vals = data_complex.flatten()
 
 for i in sigma_vals: 
-     LLRs_block_1 = LLRs(complex_vals, c_k, sigma_square, A)
+     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
      compare4 = decoded_raw_data
      error(compare2, compare4, '2 against 4')
