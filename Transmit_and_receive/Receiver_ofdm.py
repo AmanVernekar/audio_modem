@@ -182,15 +182,31 @@ channel_estimate = estimate_channel_from_known_ofdm()
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
+# Takes the np array of complex data values and turns it into hard decision boundary binary
+# condition_00 = (data.real >= 0) & (data.imag >= 0)
+# condition_01 = (data.real < 0) & (data.imag >= 0)
+# condition_11 = (data.real < 0) & (data.imag < 0)
+# condition_10 = (data.real >= 0) & (data.imag < 0)
+
+
+# # Apply the decision rules using np.where
+# data_bin = np.where(condition_00, "00", 
+#             np.where(condition_01, "01", 
+#             np.where(condition_11, "11", 
+#             np.where(condition_10, "10", 
+#             "Error"))))
+
 
 first_data = data[0]
-first_colours = colors[:num_data_bins]
 
-plt.scatter(first_data.real, first_data.imag, c=first_colours)
-plt.xlim(-20, 20)  # Limit the x-axis 
-plt.ylim(-20, 20)
-plt.axhline(y=0, color='k')
-plt.axvline(x=0, color='k')
+
+# To plot the constellation
+# first_colours = colors[:num_data_bins]
+# plt.scatter(first_data.real, first_data.imag, c=first_colours)
+# plt.xlim(-20, 20)  # Limit the x-axis 
+# plt.ylim(-20, 20)
+# plt.axhline(y=0, color='k')
+# plt.axvline(x=0, color='k')
 # plt.show()
 
 first_data = list(first_data)
@@ -210,7 +226,7 @@ for i in range(len(first_data)):
          first_data_bin.append(0)
 
 first_data_bin_np = np.array(first_data_bin)
-np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
+# np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
 
 first_half_systematic_data = first_data_bin[:num_data_bins]
 print("binary data len: ", len(first_half_systematic_data))
@@ -286,9 +302,9 @@ y = np.array(y)
 app, it = c.decode(y)
 app = app[:648]
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-print(np.nonzero((app < 0) != x))
 
-compare1 = first_half_systematic_data
+# print(np.nonzero((app < 0) != x))
+# compare1 = first_half_systematic_data
 compare2 = x
 
 app = np.where(app < 0, 1, 0)
@@ -304,7 +320,7 @@ def error(compare1, compare2, test):
     print("wrong: ", wrong)
     print(test, " : ", (wrong/ len(compare1))*100)
 
-error(compare1, compare2, '1 against 2')
+# error(compare1, compare2, '1 against 2')
 error(compare2, compare3, '2 against 3')
 
 
@@ -353,29 +369,13 @@ def average_magnitude(complex_array):
 A = average_magnitude(data[0])
 print("A: ", A)
 
-sigma_vals = np.linspace(0.01, 5, 20)
+sigma_vals = 1                      #    np.linspace(0.01, 5, 20)
 
 for i in sigma_vals: 
      LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
-     print(LLRs_block_1[:10])
      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
      compare4 = decoded_raw_data
-     error(compare2, compare4, '2 against 4')
+     error(compare2, compare4, f'Sigma: {i} Compare sent binary data to LLR decoded binary')
 
-
-
-# raw_bin_data = np.load("Data_files/binary_data.npy")
-# compare1 = raw_bin_data[:num_data_bins]
-# compare2 = decoded_raw_data[:num_data_bins]
-
-# def error(compare1, compare2, test): 
-#     wrong = 0
-#     for i in range(len(compare1)): 
-#         if int(compare1[i]) != compare2[i]: 
-#             wrong = wrong + 1
-#     print("wrong: ", wrong)
-#     print(test, " : ", (wrong/ len(compare1))*100)
-
-# error(compare1, compare2, '1 against 2')
 
 
