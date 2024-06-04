@@ -30,7 +30,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
  
 if do_real_recording:
     # Using real recording
@@ -180,25 +180,19 @@ ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols ind
 channel_estimate = estimate_channel_from_known_ofdm()
 
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
-data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
-# Takes the np array of complex data values and turns it into hard decision boundary binary
-# condition_00 = (data.real >= 0) & (data.imag >= 0)
-# condition_01 = (data.real < 0) & (data.imag >= 0)
-# condition_11 = (data.real < 0) & (data.imag < 0)
-# condition_10 = (data.real >= 0) & (data.imag < 0)
+num_unknown_symbols = num_symbols - num_known_symbols
 
+data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
 
-# # Apply the decision rules using np.where
-# data_bin = np.where(condition_00, "00", 
-#             np.where(condition_01, "01", 
-#             np.where(condition_11, "11", 
-#             np.where(condition_10, "10", 
-#             "Error"))))
+data_bin[(data_complex.real > 0) & (data_complex.imag > 0)] = [0, 0]  # [0, 0]
+data_bin[(data_complex.real < 0) & (data_complex.imag > 0)] = [0, 1]  # [0, 1]
+data_bin[(data_complex.real < 0) & (data_complex.imag < 0)] = [1, 1]  # [1, 1]
+data_bin[(data_complex.real > 0) & (data_complex.imag < 0)] = [1, 0]  # [1, 0]
 
-
-first_data = data[0]
-
+# Reshape the array to (105, 1296)
+data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
 
 # To plot the constellation
 # first_colours = colors[:num_data_bins]
@@ -209,27 +203,11 @@ first_data = data[0]
 # plt.axvline(x=0, color='k')
 # plt.show()
 
-first_data = list(first_data)
-first_data_bin = []
-for i in range(len(first_data)): 
-    if first_data[i].real > 0 and first_data[i].imag > 0:
-         first_data_bin.append(0)
-         first_data_bin.append(0)
-    elif first_data[i].real < 0 and first_data[i].imag > 0:
-         first_data_bin.append(0)
-         first_data_bin.append(1)
-    elif first_data[i].real < 0 and first_data[i].imag < 0:
-         first_data_bin.append(1)
-         first_data_bin.append(1)
-    elif first_data[i].real > 0 and first_data[i].imag < 0:
-         first_data_bin.append(1)
-         first_data_bin.append(0)
+first_half_systematic_data = data_bin[:, :num_data_bins]
+print("binary data len: ", first_half_systematic_data.shape)
 
-first_data_bin_np = np.array(first_data_bin)
-# np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
-
-first_half_systematic_data = first_data_bin[:num_data_bins]
-print("binary data len: ", len(first_half_systematic_data))
+flattened_first_halfs = first_half_systematic_data.flatten()
+flattened_first_halfs = list(flattened_first_halfs)
 
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
@@ -246,7 +224,7 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(binary_to_utf8(first_half_systematic_data))
+print(binary_to_utf8(flattened_first_halfs))
 
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
@@ -294,17 +272,19 @@ z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
-y = []
-for i in range(len(first_data_bin)): 
-     y.append( 5 * (.5 - first_data_bin[i]))
+# y = []
+fake_LLR_multiply = 5 
+# for i in range(len(first_data_bin)): 
+#      y.append( fake_LLR_multiply * (.5 - first_data_bin[i]))
 
-y = np.array(y)
-app, it = c.decode(y)
+fake_LLR_from_bin = fake_LLR_multiply * (0.5 - data_bin)
+
+app, it = c.decode(fake_LLR_from_bin[0])
 app = app[:648]
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
 # print(np.nonzero((app < 0) != x))
-# compare1 = first_half_systematic_data
+compare1 = first_half_systematic_data[0]
 compare2 = x
 
 app = np.where(app < 0, 1, 0)
@@ -320,7 +300,7 @@ def error(compare1, compare2, test):
     print("wrong: ", wrong)
     print(test, " : ", (wrong/ len(compare1))*100)
 
-# error(compare1, compare2, '1 against 2')
+error(compare1, compare2, '1 against 2')
 error(compare2, compare3, '2 against 3')
 
 
@@ -366,16 +346,17 @@ def average_magnitude(complex_array):
     return average_mag
 
 
-A = average_magnitude(data[0])
+A = average_magnitude(data_complex[0])
 print("A: ", A)
 
-sigma_vals = 1                      #    np.linspace(0.01, 5, 20)
+sigma_vals = [1]                      #    np.linspace(0.01, 5, 20)
+complex_vals = data_complex.flatten()
 
 for i in sigma_vals: 
-     LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
+     LLRs_block_1 = LLRs(complex_vals, c_k, sigma_square, A)
      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
      compare4 = decoded_raw_data
-     error(compare2, compare4, f'Sigma: {i} Compare sent binary data to LLR decoded binary')
+     error(compare2, compare4, '2 against 4')
 
 
 
