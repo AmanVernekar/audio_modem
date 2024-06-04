@@ -273,10 +273,11 @@ error(compare2, compare3, '2 against 3')
 def LLRs(complex_vals, c_k, sigma_square, A): 
     LLR_list = []
     for i in range(len(complex_vals)): 
-        c_conj = c_k[i].conjugate()
-        L_1 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].imag) / (sigma_square)
+        # c_conj = c_k[i].conjugate()
+        c_squared = (np.abs(c_k[i]))**2
+        L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
         LLR_list.append(L_1)
-        L_2 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].real) / (sigma_square)
+        L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
         LLR_list.append(L_2)
 
     return LLR_list
@@ -290,16 +291,15 @@ def decode_data(LLRs, chunks_num):
         decoded_list.append(decoded_chunk)
     
     decoded_data = np.concatenate(decoded_list)
-    threshold = 0.0
-    decoded_data = (decoded_data < threshold).astype(int)
+    # decoded_data = (decoded_data < 0).astype(int)
+    decoded_data = np.where(decoded_data < 0, 1, 0)
 
     decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
     decoded_raw_data = np.concatenate(decoded_data_split)
 
     return decoded_raw_data
 
-c_k = channel_estimate[lower_bin:upper_bin+1]
-sigma_square = 0.2
+
 
 def average_magnitude(complex_array):
     # Calculate the magnitudes of the complex numbers
@@ -317,44 +317,49 @@ print("A: ", A)
 sigma_vals = np.linspace(0.01, 5, 20)
 
 
-recovered_bitstream = np.array([])
+recovered_bitstream_hard = np.array([])
+recovered_bitstream_soft = np.array([])
+
 for symbol_index in range(num_known_symbols, num_symbols):
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
-    symbol_data = received_datachunk[lower_bin:upper_bin+1]
-    symbol_data = list(symbol_data)
-    symbol_data_bin = []
-    for i in range(len(symbol_data)): 
-        if symbol_data[i].real > 0 and symbol_data[i].imag > 0:
-            symbol_data_bin.append(0)
-            symbol_data_bin.append(0)
-        elif symbol_data[i].real < 0 and symbol_data[i].imag > 0:
-            symbol_data_bin.append(0)
-            symbol_data_bin.append(1)
-        elif symbol_data[i].real < 0 and symbol_data[i].imag < 0:
-            symbol_data_bin.append(1)
-            symbol_data_bin.append(1)
-        elif symbol_data[i].real > 0 and symbol_data[i].imag < 0:
-            symbol_data_bin.append(1)
-            symbol_data_bin.append(0)
+    symbol_data_complex = received_datachunk[lower_bin:upper_bin+1]
 
-    symbol_data_bin_np = np.array(symbol_data_bin)
+    # Hard decoding 
+    symbol_data_bin = np.zeros((num_data_bins, 2), dtype=int)
+
+    symbol_data_bin[(symbol_data_complex.real > 0) & (symbol_data_complex.imag > 0)] = [0, 0]  # [0, 0]
+    symbol_data_bin[(symbol_data_complex.real < 0) & (symbol_data_complex.imag > 0)] = [0, 1]  # [0, 1]
+    symbol_data_bin[(symbol_data_complex.real < 0) & (symbol_data_complex.imag < 0)] = [1, 1]  # [1, 1]
+    symbol_data_bin[(symbol_data_complex.real > 0) & (symbol_data_complex.imag < 0)] = [1, 0]  # [1, 0]
+
+    # Reshape the array to (105, 1296)
+    symbol_data_bin = symbol_data_bin.reshape(num_data_bins*2)
+
 
     symbol_half_systematic_data = symbol_data_bin[:num_data_bins]
 
-    y = []
-    for i in range(len(symbol_data_bin)): 
-        y.append( 0.1 * (.5 - symbol_data_bin[i]))
+    fake_LLR_multiply = 5
+    y = fake_LLR_multiply * (0.5 - symbol_data_bin)
 
-    y = np.array(y)
     app, it = c.decode(y)
     app = np.where(app < 0, 1, 0)
-    np.append(recovered_bitstream, app[:648])
+    np.append(recovered_bitstream_hard, app[:648])
     sent_datachunk = encoded_binary_to_ofdm_datachunk(app)
+
+    # Soft decoding 
+    sigma_square = 1 
+    c_k = channel_estimate[lower_bin : upper_bin + 1]
+    A = average_magnitude(symbol_data_complex)
+    LLR_vals = LLRs(symbol_data_complex, c_k, sigma_square, A)
+    decoded_raw_data = decode_data(LLR_vals, chunks_num = 1)
+    np.append(recovered_bitstream_soft, decoded_raw_data)
+
+    # Currently using hard 
     new_ce = ofdm_datachunks[symbol_index]/sent_datachunk
     channel_estimate = (1-alpha) * channel_estimate + alpha * new_ce
 
-np.save('recovered_bitstream.npy', recovered_bitstream)
-
+np.save('recovered_bitstream_hard.npy', recovered_bitstream_hard)
+np.save('recovered_bitstream_soft.npy', recovered_bitstream_soft)
 
 
 

@@ -119,7 +119,9 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     # we want to change this to changing phase instead of replacing 
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
     ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
- 
+    
+    
+
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
