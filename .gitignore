@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 
 ldpc_jossy/
+aman_ldpc/
+bin/

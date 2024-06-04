@@ -32,7 +32,7 @@ num_data_bins = upper_bin - lower_bin + 1            # calculate number of infor
 num_known_symbols = parameters.num_known_symbols     # number of known symbols used for channel estimation
 
 alpha = parameters.alpha                             # weight for on the fly channel estimation
-shifts = range(-200,200)
+shifts = [0] #range(-200,200)
 
 ldpc_z = parameters.ldpc_z
 ldpc_k = parameters.ldpc_k
@@ -206,13 +206,20 @@ def coeffs_from_chirp(shift, start_chirp_index): # not used at present
 def estimate_channel_from_known_ofdm(ofdm_datachunks):
         channel_estimates = np.zeros((num_known_symbols, datachunk_len), dtype='complex')
         for i in range(num_known_symbols):
-            channel_fft = ofdm_datachunks[i]/fft(sent_known_datachunks[i])
+            channel_fft = ofdm_datachunks[i]/sent_known_datachunks[i]
+            # plt.plot(fft(sent_known_datachunks[i]))
+
+            plt.plot(np.abs(ifft(channel_fft)))
+            plt.title("yo")
+            plt.show()
             channel_estimates[i] = channel_fft
         
         average_channel_estimate = np.mean(channel_estimates, axis=0)
         return average_channel_estimate
 
 def recalc_channel(shift, recording, data_start_index, data_end_index):
+    data_start_index = data_start_index + shift
+    data_end_index = data_end_index + shift
     recording_without_chirps = recording[data_start_index : data_end_index + 1]
     
     known_recording = recording_without_chirps[:num_known_symbols*symbol_len]
@@ -316,7 +323,11 @@ if __name__ == '__main__':
     
 
     data_start_index, data_end_index = detect_chirps(recording)
-    channel_coefficients, _, opt_shift = optimise_channel(shifts, recording, data_start_index, data_end_index)
+    # channel_coefficients, _, opt_shift = optimise_channel(shifts, recording, data_start_index, data_end_index)
+    # plt.plot(np.abs(ifft(channel_coefficients)))
+    # plt.show()
+    opt_shift = 0
+    
     data_start_index = data_start_index + opt_shift
     data_end_index = data_end_index + opt_shift
 
@@ -324,6 +335,8 @@ if __name__ == '__main__':
     total_num_symbols = int(len(recording_without_chirps)/symbol_len)
     time_domain_datachunks = np.reshape(recording_without_chirps, (total_num_symbols, symbol_len))[:, prefix_len:]
     ofdm_datachunks = fft(time_domain_datachunks)
+
+    channel_coefficients = ofdm_datachunks[0]/sent_known_datachunks[0]
 
     recovered_bitstream = np.array([])
 

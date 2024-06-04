@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from numpy.fft import fft, ifft
 
 #-----------------------------------------------------
 # Global parameters
@@ -65,3 +67,5 @@ known_datachunk = np.zeros((datachunk_len), dtype=complex)
 known_datachunk[1 : datachunk_len//2] = random_complex_values
 known_datachunk[datachunk_len//2  + 1:] = np.conjugate(random_complex_values[::-1])
 sent_known_datachunks = [known_datachunk]
+plt.plot(ifft(known_datachunk))
+plt.show()
