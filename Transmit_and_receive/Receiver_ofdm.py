@@ -31,14 +31,14 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 chirp_sig = our_chirp.chirp_sig
 
 # Using real recording 
-# recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
-# sd.wait()
+recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+sd.wait()
 
-# recording = recording.flatten()  # Flatten to 1D array if necessary
-# np.save(f"Data_files/example_file_recording_to_test_with.npy", recording)
+recording = recording.flatten()  # Flatten to 1D array if necessary
+np.save(f"Data_files/example_file_recording_to_test_with.npy", recording)
 
 #  Using saved recording
-recording = np.load(f"Data_files/example_file_recording_to_test_with.npy")
+# recording = np.load(f"Data_files/example_file_recording_to_test_with.npy")
 
 # STEP 2: initially synchronise
 
