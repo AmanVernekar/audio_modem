@@ -27,7 +27,7 @@ num_known_symbols = 1
 chirp_samples = int(sample_rate * chirp_duration)
 known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
-alpha = 0.5
+alpha = 0.1
 
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
@@ -365,10 +365,10 @@ for symbol_index in range(num_known_symbols, num_symbols):
 
 
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-compare1 = x 
-compare2 = recovered_bitstream_systematic
-compare3 = recovered_bitstream_hard
-compare4 = recovered_bitstream_soft
+compare1 = x[:648]
+compare2 = recovered_bitstream_systematic[:648]
+compare3 = recovered_bitstream_hard[:648]
+compare4 = recovered_bitstream_soft[:648]
 
 
 def error(compare1, compare2, test): 

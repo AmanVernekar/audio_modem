@@ -109,18 +109,24 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
 
     # create a complex array of ofdm datachunks, where each chunk is the known symbol
+    # num_of_symbols = separated_mod_sequence.shape[0]
+    # # print(f"num_of_symbols = {num_of_symbols}")
+    # # print(f"The shape of the known datachunk is {known_datachunk.shape}")
+    # ofdm_datachunk_array = np.tile(known_datachunk,(num_of_symbols, 1))
+    # # print(f"The shape of the ofdm_datachunk_array is {ofdm_datachunk_array.shape}")
+    
+    # # insert information in OFDM blocks: 
+    # # we want to change this to changing phase instead of replacing 
+    # ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
+    # ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
+    
+
     num_of_symbols = separated_mod_sequence.shape[0]
-    # print(f"num_of_symbols = {num_of_symbols}")
-    # print(f"The shape of the known datachunk is {known_datachunk.shape}")
-    ofdm_datachunk_array = np.tile(known_datachunk,(num_of_symbols, 1))
-    # print(f"The shape of the ofdm_datachunk_array is {ofdm_datachunk_array.shape}")
-    
-    # insert information in OFDM blocks: 
-    # we want to change this to changing phase instead of replacing 
-    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
-    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
-    
-    
+    random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
+    ofdm_datachunk_array = np.ones((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
+    ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
+    ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
+
 
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
