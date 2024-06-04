@@ -19,14 +19,13 @@ binary_len = (upper_bin-lower_bin+1)
 known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
 
-
+play_waveform = False
 
 z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
 raw_bin_data = np.load("Data_files/example_file_data.npy")
-print(len(raw_bin_data))
 
 def encode_data(_raw_bin_data): 
     # The code must have an input of 648 to compute the encoded data,
@@ -85,9 +84,11 @@ def qpsk_modulator(binary_sequence):
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 
+# STEP 2.5: add beginning of known datachunk to binary array and save
+# This is used for testing, when we check errors.
 known_modulated_seq_data = known_datachunk[0][lower_bin: upper_bin + 1]
 modulated_sequence_with_known = np.concatenate((known_modulated_seq_data, modulated_sequence))
-print(modulated_sequence_with_known.shape)
+
 # saving modulated sequence as npy file
 np.save(f"Data_files/mod_seq_example_file.npy", modulated_sequence_with_known)
 
@@ -99,25 +100,23 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # append with 0s if not modulated_sequence is not multiple of num_information_bins
     num_zeros = num_information_bins - (len(modulated_sequence) % num_information_bins)
-    print(num_zeros)
 
     if num_zeros != num_information_bins:
         zero_block = np.zeros(num_zeros, dtype=complex)
         modulated_sequence = np.append(modulated_sequence, zero_block)
-    print(len(modulated_sequence))
-    # create new array containing modulated_sequence, where each row corresponds to an OFDM data chunk
+
+    # create new array containing modulated_sequence, where each row corresponds to an OFDM datachunk
     separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
-    # separated_mod_sequence = np.array(np.array_split(modulated_sequence, 5))
-    print(f"yo {separated_mod_sequence.shape}") 
 
-    # create a complex array of ofdm data chunks, where each symbol is an array filled with 0s of length chunk_length
+    # create a complex array of ofdm datachunks, where each chunk is the known symbol
     num_of_symbols = separated_mod_sequence.shape[0]
-    random_noise = np.random.choice(np.array([1+1j, -1+1j, -1-1j, 1-1j]), (num_of_symbols, chunk_length//2 - 1))
-    ofdm_datachunk_array = np.ones((num_of_symbols, chunk_length), dtype=complex)  # change this so not zeros
-    ofdm_datachunk_array[:, 1:chunk_length//2] = random_noise
-    ofdm_datachunk_array[:, chunk_length//2 + 1 :] = np.fliplr(np.conjugate(random_noise))
-
+    # print(f"num_of_symbols = {num_of_symbols}")
+    # print(f"The shape of the known datachunk is {known_datachunk.shape}")
+    ofdm_datachunk_array = np.tile(known_datachunk,(num_of_symbols, 1))
+    # print(f"The shape of the ofdm_datachunk_array is {ofdm_datachunk_array.shape}")
+    
     # insert information in OFDM blocks: 
+    # we want to change this to changing phase instead of replacing 
     ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
     ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
  
@@ -125,7 +124,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
 ofdm_datachunks = np.concatenate((known_datachunk, ofdm_datachunks), axis=0)
-print(ofdm_datachunks.shape)
+print(f"The shape of the ofdm_datachunk_array with known one added is {ofdm_datachunks.shape}")
 
 # STEP 4: IDFT each OFDM symbol
 time_domain_datachunks = ifft(ofdm_datachunks, axis=1)  # applies ifft to each row
@@ -143,31 +142,31 @@ ofdm_symbols = add_cyclic_prefix(time_domain_datachunks, prefix_len)
 concatenated_blocks = ofdm_symbols.flatten()
 
 # STEP 7:convert to audio file to transmit across channel. add chirp beforehand etc.
-def convert_data_to_audio(data, sampling_rate):
+def convert_data_to_audio(data):
     # normalise to between -1 and 1:
     max_absolute_val = np.max(np.abs(data))
     waveform = data / max_absolute_val
 
-    # play the waveform
-    # sd.play(waveform, sampling_rate)
-    # sd.wait()
-    # np.save("rep_waveform.npy", waveform)
     return waveform 
 
 chirp_sig = our_chirp.chirp_sig
 chirp_w_prefix_suffix = our_chirp.chirp_w_prefix_suffix
 
-waveform = convert_data_to_audio(concatenated_blocks, sample_rate)
+waveform = convert_data_to_audio(concatenated_blocks)
 overall_sig = our_chirp.start_sig + chirp_w_prefix_suffix + list(waveform) + chirp_w_prefix_suffix 
-print(len(waveform))
 
 # Play the audio data
-# sd.play(overall_sig, sample_rate)
-# sd.wait()  # Wait until the sound has finished playing
+if play_waveform:
+    sd.play(overall_sig, sample_rate)
+    sd.wait()  # Wait until the sound has finished playing
 
 np.save(f'Data_files/example_file_overall_sent.npy', overall_sig)
 
 output_file = f'Data_files/example_file_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
-print(f"Samples of data: {len(concatenated_blocks)}")
+
+def encoded_binary_to_ofdm_datachunk(bits):
+    mod_seq = qpsk_modulator(bits)
+    ofdm_datachunk = create_ofdm_datachunks(mod_seq, datachunk_len, lower_bin, upper_bin)[0]
+    return ofdm_datachunk

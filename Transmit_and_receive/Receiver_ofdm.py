@@ -5,6 +5,7 @@ import sounddevice as sd
 from scipy.signal import chirp, correlate
 from math import sqrt
 from ldpc_jossy.py import ldpc
+from transmit_file_data import encoded_binary_to_ofdm_datachunk
 
 import parameters
 import our_chirp
@@ -26,6 +27,7 @@ num_known_symbols = 1
 chirp_samples = int(sample_rate * chirp_duration)
 known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
+alpha = 0.5
 
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
@@ -179,8 +181,8 @@ ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols ind
 
 channel_estimate = estimate_channel_from_known_ofdm()
 
-ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
-data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+_ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+data = _ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 
 first_data = data[0]
@@ -232,47 +234,7 @@ def binary_to_utf8(binary_list):
 
 print(binary_to_utf8(first_half_systematic_data)[:24])
 
-# def extract_metadata(recovered_bitstream):
-#     byte_sequence = bytearray()
 
-#     # Convert the bitstream back to bytes (if this takes long then redesign this function)
-#     for i in range(0, len(recovered_bitstream), 8):
-#         byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
-#         byte_sequence.append(int(byte, 2))
-
-#     # # convert byte sequence to ascii
-#     # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
-#     # print(byte_as_ascii)
-
-#     # Extract file name and type
-#     null_byte_count = 0
-#     file_name_and_type = ""
-#     for byte in byte_sequence:
-#         if byte == 0:
-#             null_byte_count += 1
-#             if null_byte_count == 3:
-#                 break
-#         else:
-#             file_name_and_type += chr(byte)
-    
-#     file_parts = file_name_and_type.split('.')
-#     file_name = file_parts[0]  # The part before the dot
-#     file_type = file_parts[1]  # The part after the dot
-
-#     # Extract file size in bits
-#     file_size_bits = ""
-#     for byte in byte_sequence[len(file_name_and_type) + 4:]:
-#         if byte == 0:
-#             break
-#         file_size_bits += chr(byte)
-
-#     # Convert file size back to integer
-#     file_size_bits = int(file_size_bits)
-
-
-#     return file_name, file_type, file_size_bits
-
-# extract_metadata(first_half_systematic_data)
 
 z = parameters.ldpc_z
 k = parameters.ldpc_k
@@ -354,6 +316,49 @@ print("A: ", A)
 
 sigma_vals = np.linspace(0.01, 5, 20)
 
+
+recovered_bitstream = np.array([])
+for symbol_index in range(num_known_symbols, num_symbols):
+    received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
+    symbol_data = received_datachunk[lower_bin:upper_bin+1]
+    symbol_data = list(symbol_data)
+    symbol_data_bin = []
+    for i in range(len(symbol_data)): 
+        if symbol_data[i].real > 0 and symbol_data[i].imag > 0:
+            symbol_data_bin.append(0)
+            symbol_data_bin.append(0)
+        elif symbol_data[i].real < 0 and symbol_data[i].imag > 0:
+            symbol_data_bin.append(0)
+            symbol_data_bin.append(1)
+        elif symbol_data[i].real < 0 and symbol_data[i].imag < 0:
+            symbol_data_bin.append(1)
+            symbol_data_bin.append(1)
+        elif symbol_data[i].real > 0 and symbol_data[i].imag < 0:
+            symbol_data_bin.append(1)
+            symbol_data_bin.append(0)
+
+    symbol_data_bin_np = np.array(symbol_data_bin)
+
+    symbol_half_systematic_data = symbol_data_bin[:num_data_bins]
+
+    y = []
+    for i in range(len(symbol_data_bin)): 
+        y.append( 0.1 * (.5 - symbol_data_bin[i]))
+
+    y = np.array(y)
+    app, it = c.decode(y)
+    app = np.where(app < 0, 1, 0)
+    np.append(recovered_bitstream, app[:648])
+    sent_datachunk = encoded_binary_to_ofdm_datachunk(app)
+    new_ce = ofdm_datachunks[symbol_index]/sent_datachunk
+    channel_estimate = (1-alpha) * channel_estimate + alpha * new_ce
+
+np.save('recovered_bitstream.npy', recovered_bitstream)
+
+
+
+
+
 # for i in sigma_vals: 
 #      LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
 #      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
@@ -377,3 +382,47 @@ sigma_vals = np.linspace(0.01, 5, 20)
 # error(compare1, compare2, '1 against 2')
 
 
+
+
+
+# def extract_metadata(recovered_bitstream):
+#     byte_sequence = bytearray()
+
+#     # Convert the bitstream back to bytes (if this takes long then redesign this function)
+#     for i in range(0, len(recovered_bitstream), 8):
+#         byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+#         byte_sequence.append(int(byte, 2))
+
+#     # # convert byte sequence to ascii
+#     # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
+#     # print(byte_as_ascii)
+
+#     # Extract file name and type
+#     null_byte_count = 0
+#     file_name_and_type = ""
+#     for byte in byte_sequence:
+#         if byte == 0:
+#             null_byte_count += 1
+#             if null_byte_count == 3:
+#                 break
+#         else:
+#             file_name_and_type += chr(byte)
+    
+#     file_parts = file_name_and_type.split('.')
+#     file_name = file_parts[0]  # The part before the dot
+#     file_type = file_parts[1]  # The part after the dot
+
+#     # Extract file size in bits
+#     file_size_bits = ""
+#     for byte in byte_sequence[len(file_name_and_type) + 4:]:
+#         if byte == 0:
+#             break
+#         file_size_bits += chr(byte)
+
+#     # Convert file size back to integer
+#     file_size_bits = int(file_size_bits)
+
+
+#     return file_name, file_type, file_size_bits
+
+# extract_metadata(first_half_systematic_data)
