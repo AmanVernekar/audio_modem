@@ -26,6 +26,7 @@ k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
 raw_bin_data = np.load("Data_files/example_file_data.npy")
+print(len(raw_bin_data))
 
 def encode_data(_raw_bin_data): 
     # The code must have an input of 648 to compute the encoded data,
@@ -51,6 +52,8 @@ def encode_data(_raw_bin_data):
 
 coded_info_sequence = encode_data(raw_bin_data)[0]
 np.save(f"Data_files/encoded_data.npy", coded_info_sequence)
+raw_bin_data_extend = encode_data(raw_bin_data)[1]
+np.save(f"Data_files/example_file_data_extended_zeros.npy", raw_bin_data_extend)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):

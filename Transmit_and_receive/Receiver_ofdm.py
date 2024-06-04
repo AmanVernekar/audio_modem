@@ -157,7 +157,7 @@ plt.plot(shifts, total_errors)
 plt.axvline(shifts[np.argmin(total_errors)])
 plt.ylabel("Bit error percentage (%)")
 plt.xlabel("Index")
-plt.show()
+# plt.show()
 
 
 best_shift = shifts[np.argmin(total_errors)]
@@ -187,7 +187,7 @@ plt.xlim(-20, 20)  # Limit the x-axis
 plt.ylim(-20, 20)
 plt.axhline(y=0, color='k')
 plt.axvline(x=0, color='k')
-plt.show()
+# plt.show()
 
 first_data = list(first_data)
 first_data_bin = []
@@ -204,6 +204,9 @@ for i in range(len(first_data)):
     elif first_data[i].real > 0 and first_data[i].imag < 0:
          first_data_bin.append(1)
          first_data_bin.append(0)
+
+first_data_bin_np = np.array(first_data_bin)
+np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
 
 first_half_systematic_data = first_data_bin[:num_data_bins]
 print("binary data len: ", len(first_half_systematic_data))
@@ -273,60 +276,86 @@ c = ldpc.code('802.16', '1/2', z)
 
 y = []
 for i in range(len(first_data_bin)): 
-     y.append( 10 * (.5 - first_data_bin[i]))
+     y.append( 0.1 * (.5 - first_data_bin[i]))
 
 y = np.array(y)
 app, it = c.decode(y)
-x = np.load(f"Data_files/example_file_data.npy")
-app = app[:176]
+app = app[:648]
+x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 print(np.nonzero((app < 0) != x))
 
+compare1 = first_half_systematic_data
+compare2 = x
 
-# def LLRs(complex_vals, c_k, sigma_square, A): 
-#     LLR_list = []
-#     for i in range(len(complex_vals)): 
-#         c_conj = c_k[i].conjugate()
-#         L_1 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].imag) / (sigma_square)
-#         LLR_list.append(L_1)
-#         L_2 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].real) / (sigma_square)
-#         LLR_list.append(L_2)
+app = np.where(app < 0, 1, 0)
+compare3 = app
 
-#     return LLR_list
+print(binary_to_utf8(app))
 
-# def decode_data(LLRs, chunks_num): 
-#     LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+def error(compare1, compare2, test): 
+    wrong = 0
+    for i in range(len(compare1)): 
+        if int(compare1[i]) != compare2[i]: 
+            wrong = wrong + 1
+    print("wrong: ", wrong)
+    print(test, " : ", (wrong/ len(compare1))*100)
+
+error(compare1, compare2, '1 against 2')
+error(compare2, compare3, '2 against 3')
+
+
+def LLRs(complex_vals, c_k, sigma_square, A): 
+    LLR_list = []
+    for i in range(len(complex_vals)): 
+        c_conj = c_k[i].conjugate()
+        L_1 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].imag) / (sigma_square)
+        LLR_list.append(L_1)
+        L_2 = (A*c_k[i]*c_conj*sqrt(2)*complex_vals[i].real) / (sigma_square)
+        LLR_list.append(L_2)
+
+    return LLR_list
+
+def decode_data(LLRs, chunks_num): 
+    LLRs_split = np.array(np.array_split(LLRs, chunks_num))
      
-#     decoded_list = []
-#     for i in range(chunks_num): 
-#         decoded_chunk, it = c.decode(LLRs_split[i])
-#         decoded_list.append(decoded_chunk)
+    decoded_list = []
+    for i in range(chunks_num): 
+        decoded_chunk, it = c.decode(LLRs_split[i])
+        decoded_list.append(decoded_chunk)
     
-#     decoded_data = np.concatenate(decoded_list)
-#     threshold = 0.0
-#     decoded_data = (decoded_data < threshold).astype(int)
+    decoded_data = np.concatenate(decoded_list)
+    threshold = 0.0
+    decoded_data = (decoded_data < threshold).astype(int)
 
-#     decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
-#     decoded_raw_data = np.concatenate(decoded_data_split)
+    decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
+    decoded_raw_data = np.concatenate(decoded_data_split)
 
-#     return decoded_raw_data
+    return decoded_raw_data
 
-# c_k = channel_estimate[lower_bin:upper_bin+1]
-# sigma_square = 1
+c_k = channel_estimate[lower_bin:upper_bin+1]
+sigma_square = 0.2
 
-# def average_magnitude(complex_array):
-#     # Calculate the magnitudes of the complex numbers
-#     magnitudes = np.abs(complex_array)
+def average_magnitude(complex_array):
+    # Calculate the magnitudes of the complex numbers
+    magnitudes = np.abs(complex_array)
     
-#     # Calculate the average of the magnitudes
-#     average_mag = np.mean(magnitudes)
+    # Calculate the average of the magnitudes
+    average_mag = np.mean(magnitudes)
     
-#     return average_mag
+    return average_mag
 
 
-# A = average_magnitude(data[0])
-# print("A: ", A)
-# LLRs_block_1 = LLRs(data[0], c_k, sigma_square, A)
-# decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
+A = average_magnitude(data[0])
+print("A: ", A)
+
+sigma_vals = np.linspace(0.01, 5, 20)
+
+# for i in sigma_vals: 
+#      LLRs_block_1 = LLRs(first_data, c_k, sigma_square, A)
+#      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
+#      compare4 = decoded_raw_data
+#      error(compare2, compare4, '2 against 4')
+
 
 
 # raw_bin_data = np.load("Data_files/binary_data.npy")
