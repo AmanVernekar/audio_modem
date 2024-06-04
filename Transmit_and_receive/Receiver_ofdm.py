@@ -7,6 +7,7 @@ from math import sqrt
 from ldpc_jossy.py import ldpc
 from transmit_file_data import encoded_binary_to_ofdm_datachunk
 
+
 import parameters
 import our_chirp
 
@@ -32,7 +33,7 @@ alpha = 0.5
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
  
 if do_real_recording:
     # Using real recording
@@ -175,7 +176,7 @@ print(np.min(total_errors))
 data_start_index = detected_index+best_shift+prefix_len
 recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
 
-num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+# num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
@@ -185,37 +186,37 @@ _ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide
 data = _ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
 
 
-first_data = data[0]
-first_colours = colors[:num_data_bins]
+# first_data = data[0]
+# first_colours = colors[:num_data_bins]
 
-plt.scatter(first_data.real, first_data.imag, c=first_colours)
-plt.xlim(-20, 20)  # Limit the x-axis 
-plt.ylim(-20, 20)
-plt.axhline(y=0, color='k')
-plt.axvline(x=0, color='k')
-# plt.show()
+# plt.scatter(first_data.real, first_data.imag, c=first_colours)
+# plt.xlim(-20, 20)  # Limit the x-axis 
+# plt.ylim(-20, 20)
+# plt.axhline(y=0, color='k')
+# plt.axvline(x=0, color='k')
+# # plt.show()
 
-first_data = list(first_data)
-first_data_bin = []
-for i in range(len(first_data)): 
-    if first_data[i].real > 0 and first_data[i].imag > 0:
-         first_data_bin.append(0)
-         first_data_bin.append(0)
-    elif first_data[i].real < 0 and first_data[i].imag > 0:
-         first_data_bin.append(0)
-         first_data_bin.append(1)
-    elif first_data[i].real < 0 and first_data[i].imag < 0:
-         first_data_bin.append(1)
-         first_data_bin.append(1)
-    elif first_data[i].real > 0 and first_data[i].imag < 0:
-         first_data_bin.append(1)
-         first_data_bin.append(0)
+# first_data = list(first_data)
+# first_data_bin = []
+# for i in range(len(first_data)): 
+#     if first_data[i].real > 0 and first_data[i].imag > 0:
+#          first_data_bin.append(0)
+#          first_data_bin.append(0)
+#     elif first_data[i].real < 0 and first_data[i].imag > 0:
+#          first_data_bin.append(0)
+#          first_data_bin.append(1)
+#     elif first_data[i].real < 0 and first_data[i].imag < 0:
+#          first_data_bin.append(1)
+#          first_data_bin.append(1)
+#     elif first_data[i].real > 0 and first_data[i].imag < 0:
+#          first_data_bin.append(1)
+#          first_data_bin.append(0)
 
-first_data_bin_np = np.array(first_data_bin)
-np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
+# first_data_bin_np = np.array(first_data_bin)
+# np.save(f"Data_files/received_hard_decided_bits.npy", first_data_bin_np)
 
-first_half_systematic_data = first_data_bin[:num_data_bins]
-print("binary data len: ", len(first_half_systematic_data))
+# first_half_systematic_data = first_data_bin[:num_data_bins]
+# print("binary data len: ", len(first_half_systematic_data))
 
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
@@ -232,7 +233,7 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(binary_to_utf8(first_half_systematic_data)[:24])
+# print(binary_to_utf8(first_half_systematic_data)[:24])
 
 
 
@@ -240,34 +241,34 @@ z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
-y = []
-for i in range(len(first_data_bin)): 
-     y.append( 0.1 * (.5 - first_data_bin[i]))
+# y = []
+# for i in range(len(first_data_bin)): 
+#      y.append( 0.1 * (.5 - first_data_bin[i]))
 
-y = np.array(y)
-app, it = c.decode(y)
-app = app[:648]
-x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-print(np.nonzero((app < 0) != x))
+# y = np.array(y)
+# app, it = c.decode(y)
+# app = app[:648]
+# x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
+# print(np.nonzero((app < 0) != x))
 
-compare1 = first_half_systematic_data
-compare2 = x
+# compare1 = first_half_systematic_data
+# compare2 = x
 
-app = np.where(app < 0, 1, 0)
-compare3 = app
+# app = np.where(app < 0, 1, 0)
+# compare3 = app
 
-print(binary_to_utf8(app))
+# print(binary_to_utf8(app))
 
-def error(compare1, compare2, test): 
-    wrong = 0
-    for i in range(len(compare1)): 
-        if int(compare1[i]) != compare2[i]: 
-            wrong = wrong + 1
-    print("wrong: ", wrong)
-    print(test, " : ", (wrong/ len(compare1))*100)
+# def error(compare1, compare2, test): 
+#     wrong = 0
+#     for i in range(len(compare1)): 
+#         if int(compare1[i]) != compare2[i]: 
+#             wrong = wrong + 1
+#     print("wrong: ", wrong)
+#     print(test, " : ", (wrong/ len(compare1))*100)
 
-error(compare1, compare2, '1 against 2')
-error(compare2, compare3, '2 against 3')
+# error(compare1, compare2, '1 against 2')
+# error(compare2, compare3, '2 against 3')
 
 
 def LLRs(complex_vals, c_k, sigma_square, A): 
@@ -316,9 +317,10 @@ print("A: ", A)
 
 sigma_vals = np.linspace(0.01, 5, 20)
 
-
-recovered_bitstream_hard = np.array([])
-recovered_bitstream_soft = np.array([])
+num_unknown_symbols = num_symbols - num_known_symbols
+print(num_unknown_symbols)
+recovered_bitstream_hard = np.zeros(2*num_data_bins*(num_unknown_symbols))
+recovered_bitstream_soft = np.zeros(2*num_data_bins*(num_unknown_symbols))
 
 for symbol_index in range(num_known_symbols, num_symbols):
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
@@ -343,7 +345,7 @@ for symbol_index in range(num_known_symbols, num_symbols):
 
     app, it = c.decode(y)
     app = np.where(app < 0, 1, 0)
-    np.append(recovered_bitstream_hard, app[:648])
+    recovered_bitstream_hard[symbol_index*648:(symbol_index+1)*648] = app[:648]
     sent_datachunk = encoded_binary_to_ofdm_datachunk(app)
 
     # Soft decoding 
@@ -352,11 +354,29 @@ for symbol_index in range(num_known_symbols, num_symbols):
     A = average_magnitude(symbol_data_complex)
     LLR_vals = LLRs(symbol_data_complex, c_k, sigma_square, A)
     decoded_raw_data = decode_data(LLR_vals, chunks_num = 1)
-    np.append(recovered_bitstream_soft, decoded_raw_data)
+    recovered_bitstream_soft[symbol_index*648:(symbol_index+1)*648] = decoded_raw_data
 
     # Currently using hard 
     new_ce = ofdm_datachunks[symbol_index]/sent_datachunk
     channel_estimate = (1-alpha) * channel_estimate + alpha * new_ce
+
+
+x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
+compare1 = x 
+compare2 = recovered_bitstream_hard
+print(compare2.shape, "shape")
+compare3 = recovered_bitstream_soft
+
+def error(compare1, compare2, test): 
+    wrong = 0
+    for i in range(len(compare1)): 
+        if int(compare1[i]) != compare2[i]: 
+            wrong = wrong + 1
+    print("wrong: ", wrong)
+    print(test, " : ", (wrong/ len(compare1))*100)
+
+error(compare1, compare2, '1 against 2')
+error(compare1, compare3, '1 against 3')
 
 np.save('recovered_bitstream_hard.npy', recovered_bitstream_hard)
 np.save('recovered_bitstream_soft.npy', recovered_bitstream_soft)
