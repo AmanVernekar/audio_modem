@@ -258,8 +258,8 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
     return data_bin
 
 
-
-sent_binary = np.load(f"Data_files/example_file_data_extended_zeros.npy")  # this is the file used to calculated error rates
+# Import the file used to calculated error rates
+sent_binary = np.load(f"Data_files/example_file_data_extended_zeros.npy")  
 
 def calculate_error_rates(sent_binary, decoded_binary):
     """Prints bit error rate as a percentage"""
