@@ -46,19 +46,21 @@ def encode_data(_raw_bin_data):
     
     ldpc_encoded_data = np.concatenate(ldpc_list)
 
+    np.save(f"Data_files/encoded_data.npy", ldpc_encoded_data)
+    np.save(f"Data_files/example_file_data_extended_zeros.npy", _raw_bin_data)
+
+
     # Returns the data encoded in blocks of k 
     return ldpc_encoded_data, _raw_bin_data, chunks_num
 
 coded_info_sequence = encode_data(raw_bin_data)[0]
-np.save(f"Data_files/encoded_data.npy", coded_info_sequence)
 raw_bin_data_extend = encode_data(raw_bin_data)[1]
-np.save(f"Data_files/example_file_data_extended_zeros.npy", raw_bin_data_extend)
 
 # STEP 2: Modulate as complex symbols using QPSK
 def qpsk_modulator(binary_sequence):
     # if binary_sequence has odd number of bits, add 0 at the end
     if len(binary_sequence) % 2 != 0:
-        binary_sequence = np.append(binary_sequence, 0)
+        binary_sequence = np.append(binary_sequence, 0) 
     
     # Initialize an empty array to store modulated symbols
     modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
@@ -84,12 +86,10 @@ def qpsk_modulator(binary_sequence):
 
 modulated_sequence = qpsk_modulator(coded_info_sequence) 
 
-# STEP 2.5: add beginning of known datachunk to binary array and save
+# STEP 2.5: Add known dataknown datachunk to beginning binary array and save
 # This is used for testing, when we check errors.
 known_modulated_seq_data = known_datachunk[0][lower_bin: upper_bin + 1]
 modulated_sequence_with_known = np.concatenate((known_modulated_seq_data, modulated_sequence))
-
-# saving modulated sequence as npy file
 np.save(f"Data_files/mod_seq_example_file.npy", modulated_sequence_with_known)
 
 # STEP 3: insert QPSK complex values into as many OFDM datachunks as required 
@@ -107,6 +107,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
     # create new array containing modulated_sequence, where each row corresponds to an OFDM datachunk
     separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
+    np.save("Data_files/separated_mod_sequence_sophie_test.npy", separated_mod_sequence)
 
     # create a complex array of ofdm datachunks, where each chunk is the known symbol
     num_of_symbols = separated_mod_sequence.shape[0]
@@ -117,8 +118,20 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     
     # insert information in OFDM blocks: 
     # we want to change this to changing phase instead of replacing 
-    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
-    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
+    phase_insertion = True
+    if phase_insertion: 
+        phases = np.where(separated_mod_sequence == (1+1j), 0, 
+            np.where(separated_mod_sequence == (-1+1j), np.pi/2, 
+            np.where(separated_mod_sequence == (-1-1j), (2 * np.pi)/2, 
+            np.where(separated_mod_sequence == (1-1j), (3 * np.pi)/2, 
+            np.nan))))
+        ofdm_datachunk_sub = ofdm_datachunk_array[:, lower_bin:upper_bin+1]
+        ofdm_sub_rotated = ofdm_datachunk_sub * np.exp(1j * phases)
+        ofdm_datachunk_array[:, lower_bin:upper_bin+1] = ofdm_sub_rotated  
+        ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))     
+    else: 
+        ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
+        ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
  
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
