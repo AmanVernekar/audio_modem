@@ -9,6 +9,8 @@ from ldpc_jossy.py import ldpc
 import parameters
 import our_chirp
 
+from transmit_file_data import encode_data, qpsk_modulator, create_ofdm_datachunks
+
 # length of the data in the OFDM symbol
 datachunk_len = parameters.datachunk_len
 prefix_len = parameters.prefix_len                   # length of cyclic prefix
@@ -205,29 +207,14 @@ time_domain_datachunks = np.array(np.array_split(
 # Does the fft of all symbols individually
 ofdm_datachunks = fft(time_domain_datachunks)
 
-channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
-
-# Divide each value by its corrosponding channel fft coefficient.
-ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
-# Selects the values from 1 to 511
-data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
-
-phase = False
-if phase: 
-    known_datachunk_data_bins = known_datachunk[0][lower_bin:upper_bin+1]
-    phases = np.where(np.isclose(known_datachunk_data_bins, (1+1j)), 0, 
-        np.where(np.isclose(known_datachunk_data_bins, (-1+1j)), np.pi/2, 
-        np.where(np.isclose(known_datachunk_data_bins, (-1-1j)), (2 * np.pi)/2, 
-        np.where(np.isclose(known_datachunk_data_bins, (1-1j)), (3 * np.pi)/2, 
-        np.nan))))
-    print(phase)
-    data_complex = data_complex / np.exp(1j * phases)
-
+channel_estimate = estimate_channel_from_known_ofdm()
 num_unknown_symbols = num_symbols - num_known_symbols
 
-# -------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Where dynamic channel estimation starts
 
-# Move all of the LDPC stuff below in here
+ldpc_z = parameters.ldpc_z
+c = ldpc.code('802.16', '1/2', ldpc_z)
 
 def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
     """Uses hard decision boundaries to map complex data to binary"""
@@ -249,6 +236,57 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 
     return data_bin
 
+
+first_half_systematic_data = []
+recovered_bitstream = []
+
+def error(compare1, compare2, test):
+    differences = np.sum(compare1 != compare2)
+    total_elements = len(compare1)
+    # Calculate the percentage error
+    percentage_error = (differences / total_elements) * 100
+    print(test, "\n", differences, ' wrong\n', percentage_error, " % " )
+
+
+x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
+x = x.reshape(num_unknown_symbols, num_data_bins)
+
+for symbol_index in range(1, num_symbols):
+    received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
+    complex_data = received_datachunk[lower_bin : upper_bin + 1]
+    complex_data = complex_data.reshape(1, num_data_bins)
+    hard_decision_binary_data = complex_data_hard_decision_to_binary(complex_data, 1, num_data_bins)
+
+    #----------------------------------------------------
+    # To test against 
+    first_half_systematic_data_block = hard_decision_binary_data[0][ :num_data_bins]
+    # first_half_systematic_data_block = list(first_half_systematic_data_block)
+    first_half_systematic_data.append(first_half_systematic_data_block)
+    error(first_half_systematic_data, x[symbol_index-1], 'before decoding against sent' )
+    # ---------------------------------------------------
+
+    fake_LLR_multiply = 5
+    fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data[0])
+
+    app, it = c.decode(fake_LLR_from_bin)
+    app = app[:648]
+    app = np.where(app < 0, 1, 0)
+    # app = list(app)
+    recovered_bitstream.append(app)
+
+    # ----------------------------------------------------
+    # Printing for testing 
+    error(app, x[symbol_index-1], 'decoded against original sent')
+    #------------------------------------------------------
+
+    re_encoded_bits = encode_data(app)[0]
+    modulated_re_encoded_bits = qpsk_modulator(re_encoded_bits)
+    new_known_datachunk = create_ofdm_datachunks(modulated_re_encoded_bits, datachunk_len, lower_bin, upper_bin)
+
+    new_estimate = ofdm_datachunks[symbol_index]/ new_known_datachunk[0]
+    alpha = 0.5
+    channel_estimate = alpha * channel_estimate + (1 - alpha) * new_estimate
+
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
     binary_str = ''.join(str(bit) for bit in binary_list)
@@ -264,182 +302,208 @@ def binary_to_utf8(binary_list):
 
     return utf8_string
 
-def do_ldpc_decoding(complex_data):
-    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
-    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
-    return hard_binary_data, soft_binary_data
+first_half_systematic_data = np.concatenate(first_half_systematic_data)
+recovered_bitstream = np.concatenate(recovered_bitstream)
+
+print('Before decoding: ', binary_to_utf8(first_half_systematic_data), '\n')
+print('After decoding: ', binary_to_utf8(recovered_bitstream))
 
 
-def decode_without_ldpc():
-    """Returns decoded binary array"""
+# Divide each value by its corrosponding channel fft coefficient.
+# ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
+# # Selects the values from 1 to 511
+# data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
-    hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-    # Reshape the array to (105, 1296)
-    hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
-
-    first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-    # print("shape of binary data: ", first_half_systematic_data.shape)
-
-    flattened_first_halfs = first_half_systematic_data.flatten()
-    flattened_first_halfs = list(flattened_first_halfs)
-
-    return flattened_first_halfs
-
-decode_without_ldpc()
-decoded_without_LDPC = decode_without_ldpc()
-print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}\n")
-
-def decode_ldpc_hard_decision():
-    """Returns decoded binary array"""
-    return None
-
-def decode_ldpc_with_real_LLRs(): 
-    """Returns decoded binary array"""
-    return None
-
-hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-
-first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-
-# Not currently in use:
-def extract_metadata(recovered_bitstream):
-    byte_sequence = bytearray()
-
-    # Convert the bitstream back to bytes (if this takes long then redesign this function)
-    for i in range(0, len(recovered_bitstream), 8):
-        byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
-        byte_sequence.append(int(byte, 2))
-
-    # # convert byte sequence to ascii
-    # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
-    # print(byte_as_ascii)
-
-    # Extract file name and type
-    null_byte_count = 0
-    file_name_and_type = ""
-    for byte in byte_sequence:
-        if byte == 0:
-            null_byte_count += 1
-            if null_byte_count == 3:
-                break
-        else:
-            file_name_and_type += chr(byte)
-
-    file_parts = file_name_and_type.split('.')
-    file_name = file_parts[0]  # The part before the dot
-    file_type = file_parts[1]  # The part after the dot
-
-    # Extract file size in bits
-    file_size_bits = ""
-    for byte in byte_sequence[len(file_name_and_type) + 4:]:
-        if byte == 0:
-            break
-        file_size_bits += chr(byte)
-
-    # Convert file size back to integer
-    file_size_bits = int(file_size_bits)
-
-    return file_name, file_type, file_size_bits
+# phase = False
+# if phase: 
+#     known_datachunk_data_bins = known_datachunk[0][lower_bin:upper_bin+1]
+#     phases = np.where(np.isclose(known_datachunk_data_bins, (1+1j)), 0, 
+#         np.where(np.isclose(known_datachunk_data_bins, (-1+1j)), np.pi/2, 
+#         np.where(np.isclose(known_datachunk_data_bins, (-1-1j)), (2 * np.pi)/2, 
+#         np.where(np.isclose(known_datachunk_data_bins, (1-1j)), (3 * np.pi)/2, 
+#         np.nan))))
+#     print(phase)
+#     data_complex = data_complex / np.exp(1j * phases)
 
 
-ldpc_z = parameters.ldpc_z
-c = ldpc.code('802.16', '1/2', ldpc_z)
+# -------------------------------------------------------------------------------------------------------------
 
-fake_LLR_multiply = 5
-fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
-
-app_list = []
-for i in range(num_unknown_symbols): 
-    app, it = c.decode(fake_LLR_from_bin[i])
-    app = app[:648]
-    app_list.append(app)
-
-app_array = np.array(app_list)
-
-x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-x = x.reshape(num_unknown_symbols, num_data_bins)
-
-compare1 = x
-compare2 = first_half_systematic_data
-
-app_array = np.where(app_array < 0, 1, 0)
-compare3 = app_array
-
-print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app_array.flatten())}")
-
-def error_old(compare1, compare2, test):
-    wrong = 0
-    for i in range(len(compare1)):
-        if int(compare1[i]) != compare2[i]:
-            wrong = wrong + 1
-    print("# of bit errors: ", wrong)
-    print(test, " : ", (wrong / len(compare1))*100, "%")
-
-def error(compare1, compare2, test): 
-    for i in range(compare1.shape[0]): 
-        differences = np.sum(compare1[i] != compare2[i])
-        total_elements = compare1.shape[1]  # or array1.shape[0] * array1.shape[1]
-        # Calculate the percentage error
-        percentage_error = (differences / total_elements) * 100
-
-        print(test,f'block {i}\n', 'wrong: ', differences,'percentage error: ', percentage_error)
-
-# error(compare1, compare2, '1 against 2')
-error(compare1, compare3, '2 against 3')
+# # Move all of the LDPC stuff below in here
 
 
-def LLRs(complex_vals, c_k, sigma_square, A):
-    LLR_list = []
-    for i in range(len(complex_vals)):
-        # c_conj = c_k[i].conjugate()
-        c_squared = (np.abs(c_k[i]))**2
-        L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
-        LLR_list.append(L_1)
-        L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
-        LLR_list.append(L_2)
-
-    return LLR_list
+# def do_ldpc_decoding(complex_data):
+#     """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
+#     hard_binary_data, soft_binary_data = (0, 0)  # placeholder
+#     return hard_binary_data, soft_binary_data
 
 
-def decode_data(LLRs, chunks_num):
-    LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+# def decode_without_ldpc():
+#     """Returns decoded binary array"""
 
-    decoded_list = []
-    for i in range(chunks_num):
-        decoded_chunk, it = c.decode(LLRs_split[i])
-        decoded_list.append(decoded_chunk)
+#     hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+#     # Reshape the array to (105, 1296)
+#     hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
 
-    decoded_data = np.concatenate(decoded_list)
-    decoded_data = np.where(decoded_data < 0, 1, 0)
+#     first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
+#     # print("shape of binary data: ", first_half_systematic_data.shape)
 
-    decoded_data_split = np.array(
-        np.array_split(decoded_data, chunks_num))[:, : 648]
-    decoded_raw_data = np.concatenate(decoded_data_split)
+#     flattened_first_halfs = first_half_systematic_data.flatten()
+#     flattened_first_halfs = list(flattened_first_halfs)
 
-    return decoded_raw_data
+#     return flattened_first_halfs
+
+# decode_without_ldpc()
+# decoded_without_LDPC = decode_without_ldpc()
+# print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}\n")
+
+# def decode_ldpc_hard_decision():
+#     """Returns decoded binary array"""
+#     return None
+
+# def decode_ldpc_with_real_LLRs(): 
+#     """Returns decoded binary array"""
+#     return None
+
+# hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
 
 
-c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
+
+# # Not currently in use:
+# def extract_metadata(recovered_bitstream):
+#     byte_sequence = bytearray()
+
+#     # Convert the bitstream back to bytes (if this takes long then redesign this function)
+#     for i in range(0, len(recovered_bitstream), 8):
+#         byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+#         byte_sequence.append(int(byte, 2))
+
+#     # # convert byte sequence to ascii
+#     # byte_as_ascii = ''.join(chr(byte) for byte in byte_sequence)
+#     # print(byte_as_ascii)
+
+#     # Extract file name and type
+#     null_byte_count = 0
+#     file_name_and_type = ""
+#     for byte in byte_sequence:
+#         if byte == 0:
+#             null_byte_count += 1
+#             if null_byte_count == 3:
+#                 break
+#         else:
+#             file_name_and_type += chr(byte)
+
+#     file_parts = file_name_and_type.split('.')
+#     file_name = file_parts[0]  # The part before the dot
+#     file_type = file_parts[1]  # The part after the dot
+
+#     # Extract file size in bits
+#     file_size_bits = ""
+#     for byte in byte_sequence[len(file_name_and_type) + 4:]:
+#         if byte == 0:
+#             break
+#         file_size_bits += chr(byte)
+
+#     # Convert file size back to integer
+#     file_size_bits = int(file_size_bits)
+
+#     return file_name, file_type, file_size_bits
 
 
-def average_magnitude(complex_array):
-    # Calculate the magnitudes of the complex numbers
-    magnitudes = np.abs(complex_array)
+# fake_LLR_multiply = 5
+# fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
 
-    # Calculate the average of the magnitudes
-    average_mag = np.mean(magnitudes)
+# app_list = []
+# for i in range(num_unknown_symbols): 
+#     app, it = c.decode(fake_LLR_from_bin[i])
+#     app = app[:648]
+#     app_list.append(app)
 
-    return average_mag
+# app_array = np.array(app_list)
+
+# x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
+# x = x.reshape(num_unknown_symbols, num_data_bins)
+
+# compare1 = x
+# compare2 = first_half_systematic_data
+
+# app_array = np.where(app_array < 0, 1, 0)
+# compare3 = app_array
+
+# print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app_array.flatten())}")
+
+# def error_old(compare1, compare2, test):
+#     wrong = 0
+#     for i in range(len(compare1)):
+#         if int(compare1[i]) != compare2[i]:
+#             wrong = wrong + 1
+#     print("# of bit errors: ", wrong)
+#     print(test, " : ", (wrong / len(compare1))*100, "%")
+
+# def error(compare1, compare2, test): 
+#     for i in range(compare1.shape[0]): 
+#         differences = np.sum(compare1[i] != compare2[i])
+#         total_elements = compare1.shape[1]  # or array1.shape[0] * array1.shape[1]
+#         # Calculate the percentage error
+#         percentage_error = (differences / total_elements) * 100
+
+#         print(test,f'block {i}\n', 'wrong: ', differences,'percentage error: ', percentage_error)
+
+# # error(compare1, compare2, '1 against 2')
+# error(compare1, compare3, '2 against 3')
 
 
-A = average_magnitude(data_complex[0])
-print("A: ", A)
+# def LLRs(complex_vals, c_k, sigma_square, A):
+#     LLR_list = []
+#     for i in range(len(complex_vals)):
+#         # c_conj = c_k[i].conjugate()
+#         c_squared = (np.abs(c_k[i]))**2
+#         L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
+#         LLR_list.append(L_1)
+#         L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
+#         LLR_list.append(L_2)
 
-sigma_vals = [1]
-complex_vals = data_complex.flatten()[:648]
+#     return LLR_list
 
-for i in sigma_vals:
-    LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
-    decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
-    compare4 = decoded_raw_data
-    # error(compare2, compare4, '2 against 4')
+
+# def decode_data(LLRs, chunks_num):
+#     LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+
+#     decoded_list = []
+#     for i in range(chunks_num):
+#         decoded_chunk, it = c.decode(LLRs_split[i])
+#         decoded_list.append(decoded_chunk)
+
+#     decoded_data = np.concatenate(decoded_list)
+#     decoded_data = np.where(decoded_data < 0, 1, 0)
+
+#     decoded_data_split = np.array(
+#         np.array_split(decoded_data, chunks_num))[:, : 648]
+#     decoded_raw_data = np.concatenate(decoded_data_split)
+
+#     return decoded_raw_data
+
+
+# c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
+
+
+# def average_magnitude(complex_array):
+#     # Calculate the magnitudes of the complex numbers
+#     magnitudes = np.abs(complex_array)
+
+#     # Calculate the average of the magnitudes
+#     average_mag = np.mean(magnitudes)
+
+#     return average_mag
+
+
+# A = average_magnitude(data_complex[0])
+# print("A: ", A)
+
+# sigma_vals = [1]
+# complex_vals = data_complex.flatten()[:648]
+
+# for i in sigma_vals:
+#     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
+#     decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
+#     compare4 = decoded_raw_data
+#     # error(compare2, compare4, '2 against 4')
