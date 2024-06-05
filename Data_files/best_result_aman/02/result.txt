@@ -1,0 +1,75 @@
+Without LDPC as UTF8: exampxe/ðxt15528Alright, let%{ dive deeper into this bizas~e$univhrse:
+
+In this wpshde­down world, dogs have takgn up a new hobby: professnnel skmteboarding. Thgre's¨! olobal competition called the Woof X Games, where ränane snaôers perform wribkQlike the "Tailspin Twistep" and the "Paw Plant." Thv®reignmdg champion is a bvndog named Tony Bark, known for his incredible aerial!jlips acìhis signature miwÕ¨ the "Barkslide."
+
+Meanwhkle, dolphins have formed cè elite(æâoup of underwatdr 30ies. Theyâre equipped with the latest in aquatic åcpionabí technology, likd S¯nar-disrupting gadgets and ink-squirting decoys. Thvâr headyíÁrters is a suncdo3ubmarine off the coast of!Bermuda, and their leader.®Agent(H¨Épper, commun+ceteQ with his team using a comqlex series of clicks and vhistles%Ôheir mission? tl!Ð6otect the seas from the evil octopus syndicate, knoWî as thbdômntaclan, wjo ese! lotting to steal all the vornd's pearls.
+
+Back on lséd, pig`Êîc have become the$.% culinary masterminds, npejing gourmet restaurantræin the(éïct unexpected tlawò. Their flagship eatery, Pioeon Perch, is located oj pop o` ôhe Eiffel Tower a~
+                                                                    serves delicacies like bre!dcrumb soufflÃ© and roodìop-grorî booftop salad.$TëÕ head chef, Pierre Pigeon, is"a former street bird wok turnei his passion for peû
+                                                                                                  )ng into a five-star gulinary Empire.
+
+And then therìâs tde mysterious wkrdf¡ÿ the snail racing circuit, Ujderground (literally) sìces hA|`en in hidden0tunleí#, where snails equipped wit( nitro-infused shells rsîe(at f~åákneck speedrª \he"iggest race of the yeer is tje Slime Derby, and the!ìuvpent,champion is a slmgk,aerodynamic snail named Tur"k. Betting on snail racfì `as Bacome the hottest$truN$, with odds being calculcted based on shell patterlÜ and shime consistenayIô ùou were to find yourself"in this wacky world, woulgþigu be,cheering for Tgny"Bávk at the skatepark, dining av Pigeon Perch, or plack{g bets,on Turbo at thc Shae"Derby?DET|
+
+
+
+LDPC with hard decisions as UTF8: example.txt15528Alright, let's dive deeper into this bizarre universe:
+
+In this upside-down world, dogs have taken up a new hobby: professional skateboarding. There's a global competition called the Woof X Games, where canine skaters perform tricks like the "Tailspin Twister" and the "Paw Plant." The reigning champion is a bulldog named Tony Bark, known for his incredible aerial flips and his signature move, the "Barkslide."
+
+Meanwhile, dolphins have formed an elite group of underwater spies. Theyâre equipped with the latest in aquatic espionage technology, like sonar-disrupting gadgets and ink-squirting decoys. Their headquarters is a sunken submarine off the coast of Bermuda, and their leader, Agent Flipper, communicates with his team using a complex series of clicks and whistles. Their mission? To protect the seas from the evil octopus syndicate, known as the Tentaclan, who are plotting to steal all the world's pearls.
+
+Back on land, pigeons have become the new culinary masterminds, opening gourmet restaurants in the most unexpected places. Their flagship eatery, Pigeon Perch, is located on top of the Eiffel Tower and serves delicacies like breadcrumb soufflÃ© and rooftop-grown rooftop salad. The head chef, Pierre Pigeon, is a former street bird who turned his passion for pecking into a five-star culinary empire.
+
+And then thereâs the mysterious world of the snail racing circuit. Underground (literally) races happen in hidden tunnels, where snails equipped with nitro-infused shells race at breakneck speeds. The biggest race of the year is the Slime Derby, and the current champion is a sleek, aerodynamic snail named Turbo. Betting on snail races has become the hottest trend, with odds being calculated based on shell patterns and slime consistency.
+
+If you were to find yourself in this wacky world, would you be cheering for Tony Bark at the skatepark, dining at Pigeon Perch, or placing bets on Turbo at the Slime Derby?
+2 against 3 block 0
+ wrong:  0 percentage error:  0.0
+2 against 3 block 1
+ wrong:  0 percentage error:  0.0
+2 against 3 block 2
+ wrong:  0 percentage error:  0.0
+2 against 3 block 3
+ wrong:  0 percentage error:  0.0
+2 against 3 block 4
+ wrong:  0 percentage error:  0.0
+2 against 3 block 5
+ wrong:  0 percentage error:  0.0
+2 against 3 block 6
+ wrong:  0 percentage error:  0.0
+2 against 3 block 7
+ wrong:  0 percentage error:  0.0
+2 against 3 block 8
+ wrong:  0 percentage error:  0.0
+2 against 3 block 9
+ wrong:  0 percentage error:  0.0
+2 against 3 block 10
+ wrong:  0 percentage error:  0.0
+2 against 3 block 11
+ wrong:  0 percentage error:  0.0
+2 against 3 block 12
+ wrong:  0 percentage error:  0.0
+2 against 3 block 13
+ wrong:  0 percentage error:  0.0
+2 against 3 block 14
+ wrong:  0 percentage error:  0.0
+2 against 3 block 15
+ wrong:  0 percentage error:  0.0
+2 against 3 block 16
+ wrong:  0 percentage error:  0.0
+2 against 3 block 17
+ wrong:  0 percentage error:  0.0
+2 against 3 block 18
+ wrong:  0 percentage error:  0.0
+2 against 3 block 19
+ wrong:  0 percentage error:  0.0
+2 against 3 block 20
+ wrong:  0 percentage error:  0.0
+2 against 3 block 21
+ wrong:  0 percentage error:  0.0
+2 against 3 block 22
+ wrong:  0 percentage error:  0.0
+2 against 3 block 23
+ wrong:  0 percentage error:  0.0
+2 against 3 block 24
+ wrong:  0 percentage error:  0.0
