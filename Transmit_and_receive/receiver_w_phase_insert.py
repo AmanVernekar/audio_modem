@@ -285,7 +285,7 @@ for symbol_index in range(1, num_symbols):
 
     def create_rotation_array(num_complex_values):
         
-        known_ofdm_modulated_sequence = np.resize(known_datachunk[0], num_complex_values)
+        known_ofdm_modulated_sequence = np.resize(known_datachunk[0][lower_bin: upper_bin + 1], num_complex_values)
         known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
         rotation_array = np.zeros(num_complex_values, dtype=complex)
         
