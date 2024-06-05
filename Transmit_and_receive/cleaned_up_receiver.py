@@ -216,9 +216,41 @@ channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
+
+# store current shape of data_complex:
+shape = data_complex.shape
 print(f"The shape of data_complex is {data_complex.shape}")
 
 num_unknown_symbols = num_symbols - num_known_symbols
+
+data_complex.flatten()
+
+def create_rotation_array(num_complex_values):
+    known_ofdm_modulated_sequence = np.resize(known_datachunk[0], num_complex_values)
+    
+    # Mapping to rotation values
+    for i in range(0, len(known_ofdm_modulated_sequence)):
+        # 1+1j => 1
+        if known_ofdm_modulated_sequence[i] == 1+1j:
+            known_ofdm_modulated_sequence[i] = 1
+        # -1+1j => -1j
+        elif known_ofdm_modulated_sequence[i] == -1+1j:
+            known_ofdm_modulated_sequence[i] = -1j
+        # -1-1j => -1
+        elif known_ofdm_modulated_sequence[i] == -1-1j:
+            known_ofdm_modulated_sequence[i] = -1
+        # 1-1j => 1j
+        elif known_ofdm_modulated_sequence[i] == 1-1j:
+            known_ofdm_modulated_sequence[i] = 1j
+    
+    # print(f"QPSK Modulated sequence: {known_ofdm_modulated_sequence}")
+    return known_ofdm_modulated_sequence
+
+known_ofdm_rotation_array = create_rotation_array(len(data_complex))
+
+data_complex = known_ofdm_rotation_array * data_complex
+
+data_complex = data_complex.reshape(shape)
 
 # -------------------------------------------------------------------------------------------------------------
 

@@ -63,26 +63,31 @@ def qpsk_modulator(binary_sequence):
     # Initialize an empty array to store modulated symbols
     modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
     
-    # Mapping to complex symbols using QPSK   !! Do we care about energy of each symbol? !!
+    # Mapping to complex symbols using QPSK
     for i in range(0, len(binary_sequence), 2):
         bit_pair = binary_sequence[i:i+2]
-        # 00 => 1+j
+        # 00 => 1
         if np.array_equal(bit_pair, [0, 0]):
-            modulated_sequence[i//2] = 1 + 1j
-        # 01 => -1+j
+            modulated_sequence[i//2] = 1
+        # 01 => 1j
         elif np.array_equal(bit_pair, [0, 1]):
-            modulated_sequence[i//2] = -1 + 1j
-        # 11 => -1-j
+            modulated_sequence[i//2] = 1j
+        # 11 => -1
         elif np.array_equal(bit_pair, [1, 1]):
-            modulated_sequence[i//2] = -1 - 1j
-        # 11 => 1-j
+            modulated_sequence[i//2] = -1
+        # 11 => -1j
         elif np.array_equal(bit_pair, [1, 0]):
-            modulated_sequence[i//2] = 1 - 1j
+            modulated_sequence[i//2] = - 1j
     
     # print(f"QPSK Modulated sequence: {modulated_sequence}")
     return modulated_sequence
 
-modulated_sequence = qpsk_modulator(coded_info_sequence) 
+pre_modulated_sequence = qpsk_modulator(coded_info_sequence) 
+
+# new modulated sequence:
+# create a list of known ofdm bin vals which need phases changing
+known_ofdm_modulated_sequence = np.resize(known_datachunk[0], len(pre_modulated_sequence))
+modulated_sequence = pre_modulated_sequence * known_ofdm_modulated_sequence
 
 # STEP 2.5: add beginning of known datachunk to binary array and save
 # This is used for testing, when we check errors.
