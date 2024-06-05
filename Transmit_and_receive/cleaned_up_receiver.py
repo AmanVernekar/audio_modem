@@ -216,6 +216,7 @@ channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
+print(f"The shape of data_complex is {data_complex.shape}")
 
 num_unknown_symbols = num_symbols - num_known_symbols
 
