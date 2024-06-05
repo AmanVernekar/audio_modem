@@ -34,7 +34,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -211,6 +211,8 @@ channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
+known_datachunk_to_remove = (known_datachunk/(1+1j))[:, lower_bin:upper_bin+1]
+data_complex = data_complex/(known_datachunk_to_remove)
 
 num_unknown_symbols = num_symbols - num_known_symbols
 
