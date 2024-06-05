@@ -106,7 +106,6 @@ else:
 
 optimisation_resynch = False
 
-
 def estimate_channel_from_known_ofdm():
         channel_fft = ofdm_datachunks[0]/known_datachunk[0]
         return channel_fft
@@ -115,6 +114,8 @@ if optimisation_resynch:
     shifts = range(-100,100)
     total_errors = np.zeros((len(shifts)))
 
+    # -------------------------------------------------------------------------------------------------------------
+    # Please look at this bit I don't get it
     source_mod_seq = np.load(f"Data_files/mod_seq_example_file.npy")[num_known_symbols*num_data_bins:]
 
     sent_signal = np.load(f'Data_files/example_file_overall_sent.npy')
@@ -177,6 +178,8 @@ if optimisation_resynch:
 else:
     best_shift = 0
 
+# -------------------------------------------------------------------------------------------------------------
+# Please look at this bit I don't get it
 
 # Refinding the data from the best shift. 
 data_start_index = detected_index+best_shift+prefix_len
@@ -193,27 +196,33 @@ data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values fr
 
 num_unknown_symbols = num_symbols - num_known_symbols
 
-data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
+# -------------------------------------------------------------------------------------------------------------
 
-data_bin[(data_complex.real > 0) & (data_complex.imag > 0)] = [0, 0]  # [0, 0]
-data_bin[(data_complex.real < 0) & (data_complex.imag > 0)] = [0, 1]  # [0, 1]
-data_bin[(data_complex.real < 0) & (data_complex.imag < 0)] = [1, 1]  # [1, 1]
-data_bin[(data_complex.real > 0) & (data_complex.imag < 0)] = [1, 0]  # [1, 0]
+# Move all of the LDPC stuff below in here
+def do_ldpc_decoding(complex_data):
+    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
+    hard_binary_data, soft_binary_data = (0,0) #placeholder
+    return hard_binary_data, soft_binary_data
 
+
+def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
+    data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
+
+    data_bin[(data_complex.real > 0) & (data_complex.imag > 0)] = [0, 0]  # [0, 0]
+    data_bin[(data_complex.real < 0) & (data_complex.imag > 0)] = [0, 1]  # [0, 1]
+    data_bin[(data_complex.real < 0) & (data_complex.imag < 0)] = [1, 1]  # [1, 1]
+    data_bin[(data_complex.real > 0) & (data_complex.imag < 0)] = [1, 0]  # [1, 0]
+
+    return data_bin
+
+
+data_bin = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
 # Reshape the array to (105, 1296)
 data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
 
-# To plot the constellation
-# first_colours = colors[:num_data_bins]
-# plt.scatter(first_data.real, first_data.imag, c=first_colours)
-# plt.xlim(-20, 20)  # Limit the x-axis 
-# plt.ylim(-20, 20)
-# plt.axhline(y=0, color='k')
-# plt.axvline(x=0, color='k')
-# plt.show()
 
 first_half_systematic_data = data_bin[:, :num_data_bins]
-print("shape of binary data: ", first_half_systematic_data.shape)
+# print("shape of binary data: ", first_half_systematic_data.shape)
 
 flattened_first_halfs = first_half_systematic_data.flatten()
 flattened_first_halfs = list(flattened_first_halfs)
@@ -233,8 +242,9 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(f"First half of binary data as UTF8: {binary_to_utf8(flattened_first_halfs)}")
+print(f"First half of OFDM symbol as UTF8: {binary_to_utf8(flattened_first_halfs)}")
 
+# Not currently in use:
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
 
@@ -366,6 +376,3 @@ for i in sigma_vals:
      decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
      compare4 = decoded_raw_data
      error(compare2, compare4, '2 against 4')
-
-
-
