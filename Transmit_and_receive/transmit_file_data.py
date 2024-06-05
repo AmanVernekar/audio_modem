@@ -124,7 +124,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
 ofdm_datachunks = np.concatenate((known_datachunk, ofdm_datachunks), axis=0)
-print(f"The shape of the ofdm_datachunk_array with known one added is {ofdm_datachunks.shape}")
+# print(f"The shape of the ofdm_datachunk_array with known one added is {ofdm_datachunks.shape}")
 
 # STEP 4: IDFT each OFDM symbol
 time_domain_datachunks = ifft(ofdm_datachunks, axis=1)  # applies ifft to each row
