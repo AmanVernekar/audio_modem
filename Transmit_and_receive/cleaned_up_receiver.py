@@ -31,6 +31,11 @@ chirp_samples = int(sample_rate * chirp_duration)
 known_datachunk = parameters.known_datachunk
 known_datachunk = known_datachunk.reshape(1, 4096)
 
+ldpc_z = parameters.ldpc_z
+ldpc_type = parameters.ldpc_type  # '802.16'
+ldpc_rate = parameters.ldpc_rate  # '1/2'
+c = ldpc.code(ldpc_type, ldpc_rate, ldpc_z)
+
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
@@ -218,6 +223,7 @@ num_unknown_symbols = num_symbols - num_known_symbols
 
 # Move all of the LDPC stuff below in here
 
+
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
     binary_str = ''.join(str(bit) for bit in binary_list)
@@ -251,10 +257,7 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 
     return data_bin
 
-def do_ldpc_decoding(complex_data):
-    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
-    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
-    return hard_binary_data, soft_binary_data
+
 
 sent_binary = np.load(f"Data_files/example_file_data_extended_zeros.npy")  # this is the file used to calculated error rates
 
@@ -288,21 +291,12 @@ def decode_without_ldpc():
     flattened_first_halfs = first_half_systematic_data.flatten()
     flattened_first_halfs = list(flattened_first_halfs)
 
-    print(f"Without LDPC as UTF8:")
+    print(f"Without LDPC:")
     calculate_error_rates(sent_binary, flattened_first_halfs)
     if show_decoded_messages:
         print(f"{binary_to_utf8(flattened_first_halfs)}")
 
     return flattened_first_halfs
-
-decode_without_ldpc()
-
-
-
-ldpc_z = parameters.ldpc_z
-ldpc_type = parameters.ldpc_type  # '802.16'
-ldpc_rate = parameters.ldpc_rate  # '1/2'
-c = ldpc.code(ldpc_type, ldpc_rate, ldpc_z)
 
 def decode_ldpc_hard_decision():
     """Returns decoded binary array"""
@@ -319,14 +313,12 @@ def decode_ldpc_hard_decision():
     app = np.where(app < 0, 1, 0)
 
 
-    print(f"LDPC with hard decisions as UTF8:")
+    print(f"LDPC with hard decisions:")
     calculate_error_rates(sent_binary, app)
     if show_decoded_messages:
         print(f"{binary_to_utf8(app)}")
 
     return app
-
-decode_ldpc_hard_decision()
 
 def decode_ldpc_with_real_LLRs(): 
     """Returns decoded binary array"""
@@ -379,7 +371,7 @@ def decode_ldpc_with_real_LLRs():
     LLRs_block_1 = LLRs(complex_vals, c_k, sigma, A)
     decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
 
-    print(f"LDPC with calculated LLRs as UTF8:")
+    print(f"LDPC with calculated LLRs:")
     calculate_error_rates(sent_binary, decoded_raw_data)
 
     if show_decoded_messages:
@@ -387,8 +379,14 @@ def decode_ldpc_with_real_LLRs():
 
     return decoded_raw_data
 
+decode_without_ldpc()
+decode_ldpc_hard_decision()
 decode_ldpc_with_real_LLRs()
 
+def do_ldpc_decoding(complex_data):
+    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
+    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
+    return hard_binary_data, soft_binary_data
 
 # Not currently in use:
 
