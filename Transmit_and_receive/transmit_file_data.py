@@ -86,8 +86,31 @@ pre_modulated_sequence = qpsk_modulator(coded_info_sequence)
 
 # new modulated sequence:
 # create a list of known ofdm bin vals which need phases changing
+def round_complex_array(arr):
+    # Separate real and imaginary parts
+    real_part = np.real(arr)
+    imag_part = np.imag(arr)
+
+    # Round the real and imaginary parts
+    rounded_real = np.round(real_part)
+    rounded_imag = np.round(imag_part)
+
+    # Combine the rounded parts back into a complex array
+    rounded_arr = rounded_real + 1j * rounded_imag
+
+    return rounded_arr
+
 known_ofdm_modulated_sequence = np.resize(known_datachunk[0], len(pre_modulated_sequence))
+known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
 modulated_sequence = pre_modulated_sequence * known_ofdm_modulated_sequence
+
+def test_modulation_working(i):
+    print(f"Information bits:         {coded_info_sequence[2*i:2*(i+1)]}")
+    print(f"Rotation term:            {pre_modulated_sequence[i]}")
+    print(f"Known OFDM complex value: {known_ofdm_modulated_sequence[i]}")
+    print(f"Result:                   {modulated_sequence[i]}")
+
+# test_modulation_working(150)
 
 # STEP 2.5: add beginning of known datachunk to binary array and save
 # This is used for testing, when we check errors.

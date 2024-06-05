@@ -9,6 +9,7 @@ from ldpc_jossy.py import ldpc
 import parameters
 import our_chirp
 
+
 # length of the data in the OFDM symbol
 datachunk_len = parameters.datachunk_len
 prefix_len = parameters.prefix_len                   # length of cyclic prefix
@@ -223,34 +224,61 @@ print(f"The shape of data_complex is {data_complex.shape}")
 
 num_unknown_symbols = num_symbols - num_known_symbols
 
-data_complex.flatten()
+data_complex_before = data_complex.flatten()
+
+def round_complex_array(arr):
+    # Separate real and imaginary parts
+    real_part = np.real(arr)
+    imag_part = np.imag(arr)
+
+    # Round the real and imaginary parts
+    rounded_real = np.round(real_part)
+    rounded_imag = np.round(imag_part)
+
+    # Combine the rounded parts back into a complex array
+    rounded_arr = rounded_real + 1j * rounded_imag
+
+    return rounded_arr
 
 def create_rotation_array(num_complex_values):
-    known_ofdm_modulated_sequence = np.resize(known_datachunk[0], num_complex_values)
     
+    known_ofdm_modulated_sequence = np.resize(known_datachunk[0], num_complex_values)
+    known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
+    rotation_array = np.zeros(num_complex_values, dtype=complex)
+    
+    # Define a tolerance for complex number comparisons
+    tolerance = 1e-9
+
     # Mapping to rotation values
-    for i in range(0, len(known_ofdm_modulated_sequence)):
+    for i in range(len(known_ofdm_modulated_sequence)):
+        val = known_ofdm_modulated_sequence[i]
         # 1+1j => 1
-        if known_ofdm_modulated_sequence[i] == 1+1j:
-            known_ofdm_modulated_sequence[i] = 1
+        if np.allclose(val, 1+1j, atol=tolerance):
+            rotation_array[i] = 1+0j
         # -1+1j => -1j
-        elif known_ofdm_modulated_sequence[i] == -1+1j:
-            known_ofdm_modulated_sequence[i] = -1j
+        elif np.allclose(val, -1+1j, atol=tolerance):
+            rotation_array[i] = 0-1j
         # -1-1j => -1
-        elif known_ofdm_modulated_sequence[i] == -1-1j:
-            known_ofdm_modulated_sequence[i] = -1
+        elif np.allclose(val, -1-1j, atol=tolerance):
+            rotation_array[i] = -1+0j
         # 1-1j => 1j
-        elif known_ofdm_modulated_sequence[i] == 1-1j:
-            known_ofdm_modulated_sequence[i] = 1j
+        elif np.allclose(val, 1-1j, atol=tolerance):
+            rotation_array[i] = 0+1j
     
     # print(f"QPSK Modulated sequence: {known_ofdm_modulated_sequence}")
-    return known_ofdm_modulated_sequence
+    
+    return known_ofdm_modulated_sequence, rotation_array
 
-known_ofdm_rotation_array = create_rotation_array(len(data_complex))
+
+known_ofdm_modulated_sequence, known_ofdm_rotation_array = create_rotation_array(len(data_complex_before))
+known_ofdm_rotation_array = round_complex_array(known_ofdm_rotation_array)
+
 
 data_complex = known_ofdm_rotation_array * data_complex
+data_complex_flat = data_complex
 
 data_complex = data_complex.reshape(shape)
+
 
 # -------------------------------------------------------------------------------------------------------------
 
@@ -293,6 +321,15 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 
 # Import the file used to calculated error rates
 sent_binary = np.load(f"Data_files/example_file_data_extended_zeros.npy")  
+
+def test_demodulation_working(i):
+    print(f"Known OFDM complex value: {known_ofdm_modulated_sequence[i]}")
+    print(f"Rotation term:            {known_ofdm_rotation_array[i]}")
+    print(f"Original complex value:   {data_complex_before[i]}")
+    print(data_complex_flat.shape)
+    print(f"Resulting complex value:  {data_complex_flat[0][i]}")
+
+test_demodulation_working(10)
 
 def calculate_error_rates(sent_binary, decoded_binary):
     """Prints bit error rate as a percentage"""
