@@ -240,12 +240,14 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 first_half_systematic_data = []
 recovered_bitstream = []
 
-def error(compare1, compare2, test):
+def error(compare1, compare2, test, print_out):
     differences = np.sum(compare1 != compare2)
     total_elements = len(compare1)
     # Calculate the percentage error
     percentage_error = (differences / total_elements) * 100
-    print(test, "\n", differences, ' wrong\n', percentage_error, " % " )
+    if print_out: 
+        print(test, "\n", differences, ' wrong\n', percentage_error, " % " )
+    return differences
 
 
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
@@ -262,7 +264,7 @@ for symbol_index in range(1, num_symbols):
     first_half_systematic_data_block = hard_decision_binary_data[0][ :num_data_bins]
     # first_half_systematic_data_block = list(first_half_systematic_data_block)
     first_half_systematic_data.append(first_half_systematic_data_block)
-    error(first_half_systematic_data, x[symbol_index-1], 'before decoding against sent' )
+    error(first_half_systematic_data, x[symbol_index-1], 'before decoding against sent', False)
     # ---------------------------------------------------
 
     fake_LLR_multiply = 5
@@ -276,7 +278,10 @@ for symbol_index in range(1, num_symbols):
 
     # ----------------------------------------------------
     # Printing for testing 
-    error(app, x[symbol_index-1], f'decoded against original sent BLOCK {symbol_index}')
+    differences = error(app, x[symbol_index-1], f'decoded against original sent BLOCK {symbol_index}', True)
+    if differences != 0: 
+        print(f'Failed at block {symbol_index}')
+        break
     #------------------------------------------------------
 
     re_encoded_bits = encode_data(app)[0]
@@ -284,7 +289,7 @@ for symbol_index in range(1, num_symbols):
     new_known_datachunk = create_ofdm_datachunks(modulated_re_encoded_bits, datachunk_len, lower_bin, upper_bin)
 
     new_estimate = ofdm_datachunks[symbol_index]/ new_known_datachunk[0]
-    alpha = 0.5
+    alpha = 0.6
     channel_estimate = alpha * channel_estimate + (1 - alpha) * new_estimate
 
 def binary_to_utf8(binary_list):
@@ -305,8 +310,10 @@ def binary_to_utf8(binary_list):
 first_half_systematic_data = np.concatenate(first_half_systematic_data)
 recovered_bitstream = np.concatenate(recovered_bitstream)
 
-print('Before decoding: ', binary_to_utf8(first_half_systematic_data), '\n')
-print('After decoding: ', binary_to_utf8(recovered_bitstream))
+print_out = False
+if print_out: 
+    print('Before decoding: ', binary_to_utf8(first_half_systematic_data), '\n')
+    print('After decoding: ', binary_to_utf8(recovered_bitstream))
 
 
 # Divide each value by its corrosponding channel fft coefficient.
