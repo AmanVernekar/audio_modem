@@ -34,7 +34,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -212,6 +212,17 @@ ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_firs
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
+phase = False
+if phase: 
+    known_datachunk_data_bins = known_datachunk[0][lower_bin:upper_bin+1]
+    phases = np.where(np.isclose(known_datachunk_data_bins, (1+1j)), 0, 
+        np.where(np.isclose(known_datachunk_data_bins, (-1+1j)), np.pi/2, 
+        np.where(np.isclose(known_datachunk_data_bins, (-1-1j)), (2 * np.pi)/2, 
+        np.where(np.isclose(known_datachunk_data_bins, (1-1j)), (3 * np.pi)/2, 
+        np.nan))))
+    print(phase)
+    data_complex = data_complex / np.exp(1j * phases)
+
 num_unknown_symbols = num_symbols - num_known_symbols
 
 # -------------------------------------------------------------------------------------------------------------
@@ -355,7 +366,7 @@ x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
 
 compare1 = first_half_systematic_data[0]
-compare2 = x
+compare2 = x[:648]
 
 app = np.where(app < 0, 1, 0)
 compare3 = app
@@ -424,7 +435,7 @@ A = average_magnitude(data_complex[0])
 print("A: ", A)
 
 sigma_vals = [1]
-complex_vals = data_complex.flatten()
+complex_vals = data_complex.flatten()[:648]
 
 for i in sigma_vals:
     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)

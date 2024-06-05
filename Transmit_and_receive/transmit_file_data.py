@@ -117,9 +117,20 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     
     # insert information in OFDM blocks: 
     # we want to change this to changing phase instead of replacing 
-    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
-    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
- 
+    phase_insertion = False
+    if phase_insertion: 
+        phases = np.where(separated_mod_sequence == (1+1j), 0, 
+            np.where(separated_mod_sequence == (-1+1j), np.pi/2, 
+            np.where(separated_mod_sequence == (-1-1j), (2 * np.pi)/2, 
+            np.where(separated_mod_sequence == (1-1j), (3 * np.pi)/2, 
+            np.nan))))
+        ofdm_datachunk_sub = ofdm_datachunk_array[:, lower_bin:upper_bin+1]
+        ofdm_sub_rotated = ofdm_datachunk_sub * np.exp(1j * phases)
+        ofdm_datachunk_array[:, lower_bin:upper_bin+1] = ofdm_sub_rotated  
+        ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))     
+    else: 
+        ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
+        ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of 
     return ofdm_datachunk_array  # returns array of OFDM blocks
 
 ofdm_datachunks = create_ofdm_datachunks(modulated_sequence, datachunk_len, lower_bin, upper_bin)
@@ -164,3 +175,5 @@ np.save(f'Data_files/example_file_overall_sent.npy', overall_sig)
 
 output_file = f'Data_files/example_file_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
+
+print(len(concatenated_blocks))
