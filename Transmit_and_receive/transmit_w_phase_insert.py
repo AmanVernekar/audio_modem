@@ -100,7 +100,7 @@ def round_complex_array(arr):
 
     return rounded_arr
 
-known_ofdm_modulated_sequence = np.resize(known_datachunk[0][lower_bin: upper_bin + 1], len(pre_modulated_sequence))
+known_ofdm_modulated_sequence = np.resize(known_datachunk[0], len(pre_modulated_sequence))
 known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
 modulated_sequence = pre_modulated_sequence * known_ofdm_modulated_sequence
 
