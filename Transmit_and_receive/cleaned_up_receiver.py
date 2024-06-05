@@ -158,10 +158,10 @@ if optimisation_resynch:
         # Does the fft of all symbols individually
         ofdm_datachunks = fft(time_domain_datachunks)
 
-        channel_estimate = estimate_channel_from_known_ofdm()
+        channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 
         # Divide each value by its corrosponding channel fft coefficient.
-        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
         # Selects the values from 1 to 511
         data = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
@@ -189,8 +189,10 @@ if optimisation_resynch:
 else:
     best_shift = 0
 
+
+# STEP: Get complex values from the data using our best synchronisation estimate:
+# I haven't looked at this bit
 # -------------------------------------------------------------------------------------------------------------
-# Please look at this bit I don't get it
 
 # Refinding the data from the best shift.
 data_start_index = detected_index+best_shift+prefix_len
@@ -203,10 +205,10 @@ time_domain_datachunks = np.array(np.array_split(
 # Does the fft of all symbols individually
 ofdm_datachunks = fft(time_domain_datachunks)
 
-channel_estimate = estimate_channel_from_known_ofdm()
+channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 
 # Divide each value by its corrosponding channel fft coefficient.
-ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
@@ -216,14 +218,11 @@ num_unknown_symbols = num_symbols - num_known_symbols
 
 # Move all of the LDPC stuff below in here
 
-
-def do_ldpc_decoding(complex_data):
-    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
-    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
-    return hard_binary_data, soft_binary_data
-
-
 def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
+    """Uses hard decision boundaries to map complex data to binary"""
+    
+    # This uses our current code. However, surely data_bin should have length len(data_complex)? maybe not
+
     data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
 
     data_bin[(data_complex.real > 0) & (
@@ -236,20 +235,6 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
         data_complex.imag < 0)] = [1, 0]  # [1, 0]
 
     return data_bin
-
-
-data_bin = complex_data_hard_decision_to_binary(
-    data_complex, num_unknown_symbols, num_data_bins)
-# Reshape the array to (105, 1296)
-data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
-
-
-first_half_systematic_data = data_bin[:, :num_data_bins]
-# print("shape of binary data: ", first_half_systematic_data.shape)
-
-flattened_first_halfs = first_half_systematic_data.flatten()
-flattened_first_halfs = list(flattened_first_halfs)
-
 
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
@@ -266,13 +251,54 @@ def binary_to_utf8(binary_list):
 
     return utf8_string
 
+def do_ldpc_decoding(complex_data):
+    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
+    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
+    return hard_binary_data, soft_binary_data
 
-print(
-    f"First half of OFDM symbol as UTF8: {binary_to_utf8(flattened_first_halfs)}")
+
+def decode_without_ldpc():
+    """Returns decoded binary array"""
+
+    hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+    # Reshape the array to (105, 1296)
+    hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
+
+    first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
+    # print("shape of binary data: ", first_half_systematic_data.shape)
+
+    flattened_first_halfs = first_half_systematic_data.flatten()
+    flattened_first_halfs = list(flattened_first_halfs)
+
+    return flattened_first_halfs
+
+decode_without_ldpc()
+decoded_without_LDPC = decode_without_ldpc()
+print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}")
+
+def decode_ldpc_hard_decision():
+    """Returns decoded binary array"""
+    return None
+
+def decode_ldpc_with_real_LLRs(): 
+    """Returns decoded binary array"""
+    return None
+
+hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+# Reshape the array to (105, 1296)
+hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
+
+
+first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
+
+flattened_first_halfs = first_half_systematic_data.flatten()
+flattened_first_halfs = list(flattened_first_halfs)
+
+
+
+
 
 # Not currently in use:
-
-
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
 
@@ -315,29 +341,26 @@ def extract_metadata(recovered_bitstream):
 # extract_metadata(first_half_systematic_data)
 
 
-z = parameters.ldpc_z
-k = parameters.ldpc_k
-c = ldpc.code('802.16', '1/2', z)
+ldpc_z = parameters.ldpc_z
+c = ldpc.code('802.16', '1/2', ldpc_z)
 
-# y = []
+
 fake_LLR_multiply = 5
-# for i in range(len(first_data_bin)):
-#      y.append( fake_LLR_multiply * (.5 - first_data_bin[i]))
 
-fake_LLR_from_bin = fake_LLR_multiply * (0.5 - data_bin)
+fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
 
 app, it = c.decode(fake_LLR_from_bin[0])
 app = app[:648]
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
-# print(np.nonzero((app < 0) != x))
+
 compare1 = first_half_systematic_data[0]
 compare2 = x
 
 app = np.where(app < 0, 1, 0)
 compare3 = app
 
-print(f"Hard decision boundary decoded as UTF8: {binary_to_utf8(app)}")
+print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app)}")
 
 
 def error(compare1, compare2, test):
@@ -375,7 +398,6 @@ def decode_data(LLRs, chunks_num):
         decoded_list.append(decoded_chunk)
 
     decoded_data = np.concatenate(decoded_list)
-    # decoded_data = (decoded_data < 0).astype(int)
     decoded_data = np.where(decoded_data < 0, 1, 0)
 
     decoded_data_split = np.array(
@@ -385,8 +407,7 @@ def decode_data(LLRs, chunks_num):
     return decoded_raw_data
 
 
-c_k = channel_estimate[lower_bin:upper_bin+1]
-# sigma_square = 0.2
+c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
 
 
 def average_magnitude(complex_array):
