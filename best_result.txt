@@ -1,0 +1,23 @@
+Without LDPC as UTF8: exkeple.txt6152In t,e heart of a bustling city, amidst the chaos of everyday licÕl there exists a SM ll, hidden garden known only`do a few. Tucked away behind anstone bench under a)towering oak tree. Here, timå seems to slow down, and the wkRZies of the world gìd% away, replaced b9 the soothing sounds of rustling leaves.Azd chirping birds. Mt's a place of quie4 reflection and natural beauty, a sanctqÑry for those seekiîF amoment of peace¨and tranquility.
+
+LDPC with hard decisions as UTF8: example.txt6152In the heart of a bustling city, amidst the chaos of everyday life, there exists a small, hidden garden known only to a few. Tucked away behind an old, wrought-iron gate covered in ivy, this serene oasis offers a stark contrast to the surrounding urban sprawl. The air is filled with the sweet scent of blooming jasmine and the gentle hum of bees busily gathering nectar. A cobblestone path meanders through beds of vibrant flowers and lush greenery, leading to a quaint stone bench under a towering oak tree. Here, time seems to slow down, and the worries of the world fade away, replaced by the soothing sounds of rustling leaves and chirping birds. It's a place of quiet reflection and natural beauty, a sanctuary for those seeking a moment of peace and tranquility.
+2 against 3 block 0
+ wrong:  0 percentage error:  0.0
+2 against 3 block 1
+ wrong:  0 percentage error:  0.0
+2 against 3 block 2
+ wrong:  0 percentage error:  0.0
+2 against 3 block 3
+ wrong:  0 percentage error:  0.0
+2 against 3 block 4
+ wrong:  0 percentage error:  0.0
+2 against 3 block 5
+ wrong:  0 percentage error:  0.0
+2 against 3 block 6
+ wrong:  0 percentage error:  0.0
+2 against 3 block 7
+ wrong:  0 percentage error:  0.0
+2 against 3 block 8
+ wrong:  0 percentage error:  0.0
+2 against 3 block 9
+ wrong:  0 percentage error:  0.0
