@@ -59,8 +59,8 @@ matched_filter_first_half = matched_filter_output[:int(
     len(matched_filter_output)/2)]
 
 detected_index = np.argmax(matched_filter_first_half)
-print(detected_index)
-print(f"The index of the matched filter output is {detected_index}")
+# print(detected_index)
+# print(f"The index of the matched filter output is {detected_index}")
 
 
 # Re-sync off for now
@@ -218,6 +218,21 @@ num_unknown_symbols = num_symbols - num_known_symbols
 
 # Move all of the LDPC stuff below in here
 
+def binary_to_utf8(binary_list):
+    # Join the list of integers into a single string
+    binary_str = ''.join(str(bit) for bit in binary_list)
+
+    # Split the binary string into 8-bit chunks (bytes)
+    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
+
+    # Convert each byte to its corresponding UTF-8 character
+    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
+
+    # Join the UTF-8 characters to form the final string
+    utf8_string = ''.join(utf8_chars)
+
+    return utf8_string
+
 def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
     """Uses hard decision boundaries to map complex data to binary"""
     
@@ -255,9 +270,11 @@ def decode_without_ldpc():
     flattened_first_halfs = first_half_systematic_data.flatten()
     flattened_first_halfs = list(flattened_first_halfs)
 
-    print(f"Without LDPC as UTF8: {binary_to_utf8(flattened_first_halfs)}")
+    print(f"Without LDPC as UTF8: \n{binary_to_utf8(flattened_first_halfs)}")
 
     return flattened_first_halfs
+
+decode_without_ldpc()
 
 def decode_ldpc_hard_decision():
     """Returns decoded binary array"""
@@ -267,36 +284,8 @@ def decode_ldpc_with_real_LLRs():
     """Returns decoded binary array"""
     return None
 
-hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-# Reshape the array to (105, 1296)
-hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
-
-
-first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-# print("shape of binary data: ", first_half_systematic_data.shape)
-
-flattened_first_halfs = first_half_systematic_data.flatten()
-flattened_first_halfs = list(flattened_first_halfs)
-
-
-def binary_to_utf8(binary_list):
-    # Join the list of integers into a single string
-    binary_str = ''.join(str(bit) for bit in binary_list)
-
-    # Split the binary string into 8-bit chunks (bytes)
-    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
-
-    # Convert each byte to its corresponding UTF-8 character
-    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
-
-    # Join the UTF-8 characters to form the final string
-    utf8_string = ''.join(utf8_chars)
-
-    return utf8_string
-
 
 # Not currently in use:
-
 
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
@@ -340,19 +329,25 @@ def extract_metadata(recovered_bitstream):
 # extract_metadata(first_half_systematic_data)
 
 
+# ---------------------------------------------------------------------
+
 ldpc_z = parameters.ldpc_z
-c = ldpc.code('802.16', '1/2', ldpc_z)
+ldpc_type = parameters.ldpc_type  # '802.16'
+ldpc_rate = parameters.ldpc_rate  # '1/2'
+c = ldpc.code(ldpc_type, ldpc_rate, ldpc_z)
 
 
 fake_LLR_multiply = 5
 
+hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
 fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
 
 app, it = c.decode(fake_LLR_from_bin[0])
 app = app[:648]
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
-
+first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
 compare1 = first_half_systematic_data[0]
 compare2 = x
 
