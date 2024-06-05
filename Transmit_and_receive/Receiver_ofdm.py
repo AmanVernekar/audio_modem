@@ -32,7 +32,7 @@ alpha = 0.1
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
  
 if do_real_recording:
     # Using real recording
@@ -128,9 +128,10 @@ def estimate_channel_from_known_ofdm_old(_num_known_symbols):
         average_channel_estimate = np.mean(channel_estimates, axis=0)
         return average_channel_estimate
 
-def estimate_channel_from_known_ofdm():
-     channel_fft = ofdm_datachunks[0]/known_datachunk[0]
-     return channel_fft
+def estimate_channel_from_known_ofdm(ofdm_datachunks):
+     channel_fft = ofdm_datachunks[0]/known_datachunk
+     print(f"{channel_fft=}")
+     return channel_fft[0]
 
 for g, shift in enumerate(shifts):
 
@@ -144,7 +145,7 @@ for g, shift in enumerate(shifts):
     time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
     ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
-    channel_estimate = estimate_channel_from_known_ofdm()
+    channel_estimate = estimate_channel_from_known_ofdm(ofdm_datachunks)
 
     ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
     data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
@@ -160,10 +161,10 @@ for g, shift in enumerate(shifts):
 
     total_errors[g] = total_error*10/len(_data)
 
-plt.plot(shifts, total_errors)
-plt.axvline(shifts[np.argmin(total_errors)])
-plt.ylabel("Bit error percentage (%)")
-plt.xlabel("Index")
+# plt.plot(shifts, total_errors)
+# plt.axvline(shifts[np.argmin(total_errors)])
+# plt.ylabel("Bit error percentage (%)")
+# plt.xlabel("Index")
 # plt.show()
 
 
@@ -180,7 +181,7 @@ num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
 ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
 
-channel_estimate = estimate_channel_from_known_ofdm()
+channel_estimate = estimate_channel_from_known_ofdm(ofdm_datachunks)
 
 _ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
 data = _ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
@@ -323,9 +324,17 @@ recovered_bitstream_systematic = np.zeros(num_data_bins*(num_unknown_symbols))
 recovered_bitstream_hard = np.zeros(num_data_bins*(num_unknown_symbols))
 recovered_bitstream_soft = np.zeros(num_data_bins*(num_unknown_symbols))
 
+plt.plot(np.abs(ifft(channel_estimate)))
+plt.show()
+print(channel_estimate)
+print(np.abs(ifft(channel_estimate)))
+ofdm_datachunks = fft(time_domain_datachunks)
+print(f"yoyo {ofdm_datachunks.shape}")
+
 for symbol_index in range(num_known_symbols, num_symbols-1):
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
     symbol_data_complex = received_datachunk[lower_bin:upper_bin+1]
+    print(symbol_data_complex.shape, "shape", sep='   ')
 
     # Hard decoding 
     symbol_data_bin = np.zeros((num_data_bins, 2), dtype=int)
