@@ -30,7 +30,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
  
 if do_real_recording:
     # Using real recording
