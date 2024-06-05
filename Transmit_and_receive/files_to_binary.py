@@ -9,7 +9,7 @@
 
 import numpy as np
 
-file_path = 'Transmit_and_receive/files_to_transmit/example.txt'
+file_path = 'Transmit_and_receive/files_to_transmit/first_to_transmit.tiff'
 
 # Extract file name
 file_name = file_path.split('/')[-1]  # Extracts the file name from the file path
