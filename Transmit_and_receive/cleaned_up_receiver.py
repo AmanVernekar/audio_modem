@@ -244,6 +244,8 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
         data_complex.imag < 0)] = [1, 1]  # [1, 1]
     data_bin[(data_complex.real > 0) & (
         data_complex.imag < 0)] = [1, 0]  # [1, 0]
+    
+    data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
 
     return data_bin
 
@@ -285,7 +287,7 @@ def decode_without_ldpc():
 
 decode_without_ldpc()
 decoded_without_LDPC = decode_without_ldpc()
-print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}")
+print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}\n")
 
 def decode_ldpc_hard_decision():
     """Returns decoded binary array"""
@@ -296,18 +298,8 @@ def decode_ldpc_with_real_LLRs():
     return None
 
 hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-# Reshape the array to (105, 1296)
-hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
-
 
 first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-
-flattened_first_halfs = first_half_systematic_data.flatten()
-flattened_first_halfs = list(flattened_first_halfs)
-
-
-
-
 
 # Not currently in use:
 def extract_metadata(recovered_bitstream):
@@ -349,32 +341,33 @@ def extract_metadata(recovered_bitstream):
 
     return file_name, file_type, file_size_bits
 
-# extract_metadata(first_half_systematic_data)
-
 
 ldpc_z = parameters.ldpc_z
 c = ldpc.code('802.16', '1/2', ldpc_z)
 
-
 fake_LLR_multiply = 5
-
 fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
 
-app, it = c.decode(fake_LLR_from_bin[0])
-app = app[:648]
+app_list = []
+for i in range(num_unknown_symbols): 
+    app, it = c.decode(fake_LLR_from_bin[i])
+    app = app[:648]
+    app_list.append(app)
+
+app_array = np.array(app_list)
+
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
+x = x.reshape(num_unknown_symbols, num_data_bins)
 
+compare1 = x
+compare2 = first_half_systematic_data
 
-compare1 = first_half_systematic_data[0]
-compare2 = x[:648]
+app_array = np.where(app_array < 0, 1, 0)
+compare3 = app_array
 
-app = np.where(app < 0, 1, 0)
-compare3 = app
+print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app_array.flatten())}")
 
-print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app)}")
-
-
-def error(compare1, compare2, test):
+def error_old(compare1, compare2, test):
     wrong = 0
     for i in range(len(compare1)):
         if int(compare1[i]) != compare2[i]:
@@ -382,9 +375,17 @@ def error(compare1, compare2, test):
     print("# of bit errors: ", wrong)
     print(test, " : ", (wrong / len(compare1))*100, "%")
 
+def error(compare1, compare2, test): 
+    for i in range(compare1.shape[0]): 
+        differences = np.sum(compare1[i] != compare2[i])
+        total_elements = compare1.shape[1]  # or array1.shape[0] * array1.shape[1]
+        # Calculate the percentage error
+        percentage_error = (differences / total_elements) * 100
 
-error(compare1, compare2, '1 against 2')
-error(compare2, compare3, '2 against 3')
+        print(test,f'block {i}\n', 'wrong: ', differences,'percentage error: ', percentage_error)
+
+# error(compare1, compare2, '1 against 2')
+error(compare1, compare3, '2 against 3')
 
 
 def LLRs(complex_vals, c_k, sigma_square, A):
@@ -441,4 +442,4 @@ for i in sigma_vals:
     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
     decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
     compare4 = decoded_raw_data
-    error(compare2, compare4, '2 against 4')
+    # error(compare2, compare4, '2 against 4')
