@@ -1,3 +1,4 @@
+# lines 9, 15, 71-84, 261, 274-330, 352-360
 import numpy as np
 from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
@@ -5,11 +6,13 @@ import sounddevice as sd
 from scipy.signal import find_peaks, correlate
 from math import sqrt
 from ldpc_jossy.py import ldpc
+from bitarray import bitarray
 
 import parameters
 import our_chirp
 
 from transmit_file_data import encode_data, qpsk_modulator, create_ofdm_datachunks
+from files_to_binary import extract_metadata
 
 # length of the data in the OFDM symbol
 datachunk_len = parameters.datachunk_len
@@ -37,7 +40,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -78,7 +81,7 @@ def detect_chirps(recording, dist = 5):
     return data_start_index, data_end_index
 
 a,b = detect_chirps(recording)
-recording_data_len = b - a + 1
+recording_data_len = int(b - a + 1)
 
 # Re-sync off for now
 do_cyclic_resynch = False
@@ -218,7 +221,8 @@ recording_without_chirp = recording[data_start_index:
 
 num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
 time_domain_datachunks = np.array(np.array_split(
-    recording_without_chirp, num_symbols))[:, prefix_len:]
+    recording_without_chirp, num_symbols))
+time_domain_datachunks = time_domain_datachunks[:, prefix_len:]
 # Does the fft of all symbols individually
 ofdm_datachunks = fft(time_domain_datachunks)
 
@@ -254,20 +258,21 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 
 first_half_systematic_data = []
 recovered_bitstream = []
+x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
 def error(compare1, compare2, test):
     differences = 0
-    differences = np.sum(compare1 != compare2)
+    differences = np.count_nonzero(compare1 - compare2)
     total_elements = len(compare1)
     # Calculate the percentage error
     percentage_error = (differences / total_elements) * 100
     print(test, "\n", differences, ' wrong\n', percentage_error, " % " )
 
 
-x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-x = x.reshape(num_unknown_symbols, num_data_bins)
 
-for symbol_index in range(1, num_symbols):
+
+def decode_one_symbol(symbol_index):
+    global channel_estimate
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
     complex_data = received_datachunk[lower_bin : upper_bin + 1]
     complex_data = complex_data.reshape(1, num_data_bins)
@@ -292,7 +297,7 @@ for symbol_index in range(1, num_symbols):
 
     # ----------------------------------------------------
     # Printing for testing 
-    error(app, x[symbol_index-1], f'decoded against original sent BLOCK {symbol_index}')
+    error(app, x[:648], f'decoded against original sent BLOCK {symbol_index}')
     #------------------------------------------------------
 
     re_encoded_bits = encode_data(app)[0]
@@ -302,6 +307,26 @@ for symbol_index in range(1, num_symbols):
     new_estimate = ofdm_datachunks[symbol_index]/ new_known_datachunk[0]
     alpha = 0.5
     channel_estimate = alpha * channel_estimate + (1 - alpha) * new_estimate
+    return app
+
+_, _, num_bits_in_file = extract_metadata(decode_one_symbol(1))
+true_num_unknown_symbols = int(np.ceil(num_bits_in_file/num_data_bins))
+x = x.reshape(true_num_unknown_symbols, num_data_bins)
+num_symbols = true_num_unknown_symbols + num_known_symbols
+
+if true_num_unknown_symbols < num_unknown_symbols:
+    ofdm_datachunks = ofdm_datachunks[: true_num_unknown_symbols + 1]
+elif true_num_unknown_symbols > num_unknown_symbols:
+    extra_symbols_needed = true_num_unknown_symbols - num_unknown_symbols
+    recording_data_len = recording_data_len + int(extra_symbols_needed * symbol_len)
+    recording_without_chirp = recording[data_start_index:data_start_index+recording_data_len]
+    time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+    ofdm_datachunks = fft(time_domain_datachunks)
+
+
+
+for symbol_index in range(num_known_symbols + 1, num_symbols):
+    decode_one_symbol(symbol_index)
 
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
@@ -323,6 +348,15 @@ recovered_bitstream = np.concatenate(recovered_bitstream)
 
 print('Before decoding: ', binary_to_utf8(first_half_systematic_data), '\n')
 print('After decoding: ', binary_to_utf8(recovered_bitstream))
+
+file_name, file_type, file_size_bits = extract_metadata(recovered_bitstream)
+print(file_name, file_type, file_size_bits)
+
+metadata_bits_len = 8 * (len(file_name) + len(file_type) + len(str(file_size_bits)) + 7)
+bit_arr = bitarray(recovered_bitstream[metadata_bits_len:].tolist())
+    
+with open(f'{file_name}.{file_type}', "bw") as f:
+    bit_arr.tofile(f)
 
 
 # Divide each value by its corrosponding channel fft coefficient.

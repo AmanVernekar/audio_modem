@@ -26,10 +26,10 @@ with open(file_path, 'rb') as file:
 file_size_bits = file_size_bytes * 8
 
 # # Print file information
-print("File Name:", file_name)
-print("File Size (bytes):", file_size_bytes)
-print("File Size (bits):", file_size_bits)
-print("Binary array:", file_as_binary_array)
+# print("File Name:", file_name)
+# print("File Size (bytes):", file_size_bytes)
+# print("File Size (bits):", file_size_bits)
+# print("Binary array:", file_as_binary_array)
 
 
 def generate_binary_preamble(file_name, file_size_bits):
@@ -57,8 +57,9 @@ def generate_binary_preamble(file_name, file_size_bits):
 
 preamble = generate_binary_preamble(file_name, file_size_bits)
 preamble = np.array(preamble)
+# print(preamble)
 full_bin_data = np.concatenate((preamble, file_as_binary_array))
-print(full_bin_data)
+# print(full_bin_data)
 np.save(f"Data_files/example_file_data.npy", full_bin_data)
 
 
@@ -78,7 +79,7 @@ def binary_to_utf8(binary_list):
     return utf8_string
 
 full_utf8 = binary_to_utf8(full_bin_data)
-print(full_utf8)
+# print(full_utf8)
 
 
 def extract_metadata(recovered_bitstream):
@@ -86,7 +87,12 @@ def extract_metadata(recovered_bitstream):
 
     # Convert the bitstream back to bytes (if this takes long then redesign this function)
     for i in range(0, len(recovered_bitstream), 8):
-        byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+        # byte = ''.join(str(bit) for bit in recovered_bitstream[i:i+8])
+        # print(byte)
+        # byte = byte.replace('\n', '')
+        byte = str(recovered_bitstream[i:i+8])[1:-1].replace(' ', '')
+        # print(byte)
+
         byte_sequence.append(int(byte, 2))
 
     # Extract file name and type
