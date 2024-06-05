@@ -34,7 +34,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -276,7 +276,7 @@ first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
 # print("shape of binary data: ", first_half_systematic_data.shape)
 
 flattened_first_halfs = first_half_systematic_data.flatten()
-flattened_first_halfs = list(flattened_first_halfs)
+# flattened_first_halfs = list(flattened_first_halfs)
 
 
 def binary_to_utf8(binary_list):
@@ -348,13 +348,13 @@ fake_LLR_multiply = 5
 
 fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
 
-app, it = c.decode(fake_LLR_from_bin[0])
+app, it = c.decode(fake_LLR_from_bin[1])
 app = app[:648]
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
 
 
-compare1 = first_half_systematic_data[0]
-compare2 = x
+compare1 = first_half_systematic_data[1]
+compare2 = x[648:648*2]
 
 app = np.where(app < 0, 1, 0)
 compare3 = app
@@ -363,10 +363,8 @@ print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app)}")
 
 
 def error(compare1, compare2, test):
-    wrong = 0
-    for i in range(len(compare1)):
-        if int(compare1[i]) != compare2[i]:
-            wrong = wrong + 1
+    assert len(compare1) == len(compare2)
+    wrong = np.count_nonzero(compare1-compare2)
     print("# of bit errors: ", wrong)
     print(test, " : ", (wrong / len(compare1))*100, "%")
 
