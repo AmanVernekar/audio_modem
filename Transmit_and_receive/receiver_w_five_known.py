@@ -66,7 +66,7 @@ print(f"The index of the matched filter output is {detected_index}")
 
 
 # Re-sync off for now
-do_cyclic_resynch = False
+do_cyclic_resynch = True
 
 if do_cyclic_resynch:
     # Use matched filter to take out the chirp from the recording
@@ -110,7 +110,7 @@ else:
 # Process through which we calculate optimal shift with error rates from known OFDM symbols
 # Off for now
 
-optimisation_resynch = False
+optimisation_resynch = True 
 
 
 def estimate_channel_from_known_ofdm():
