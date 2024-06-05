@@ -256,6 +256,24 @@ def do_ldpc_decoding(complex_data):
     hard_binary_data, soft_binary_data = (0, 0)  # placeholder
     return hard_binary_data, soft_binary_data
 
+sent_binary = np.load(f"Data_files/example_file_data_extended_zeros.npy")  # this is the file used to calculated error rates
+
+def calculate_error_rates(sent_binary, decoded_binary):
+    """Prints bit error rate as a percentage"""
+    sent_binary = sent_binary[:len(decoded_binary)]
+
+    # Calculate the number of differing bits
+    differing_bits = np.sum(sent_binary != decoded_binary)
+    
+    # Calculate the total number of bits
+    total_bits = len(sent_binary)
+    
+    # Calculate the Bit Error Rate (BER)
+    bit_error_rate = differing_bits / total_bits
+    bit_error_rate_percentage = bit_error_rate * 100
+    print(f"BER: {bit_error_rate_percentage:.3f} %")
+
+show_decoded_messages = False
 
 def decode_without_ldpc():
     """Returns decoded binary array"""
@@ -270,7 +288,10 @@ def decode_without_ldpc():
     flattened_first_halfs = first_half_systematic_data.flatten()
     flattened_first_halfs = list(flattened_first_halfs)
 
-    print(f"Without LDPC as UTF8: \n{binary_to_utf8(flattened_first_halfs)}")
+    print(f"Without LDPC as UTF8:")
+    calculate_error_rates(sent_binary, flattened_first_halfs)
+    if show_decoded_messages:
+        print(f"{binary_to_utf8(flattened_first_halfs)}")
 
     return flattened_first_halfs
 
@@ -297,7 +318,11 @@ def decode_ldpc_hard_decision():
 
     app = np.where(app < 0, 1, 0)
 
-    print(f"\nLDPC with hard decisions as UTF8: \n{binary_to_utf8(app)}")
+
+    print(f"LDPC with hard decisions as UTF8:")
+    calculate_error_rates(sent_binary, app)
+    if show_decoded_messages:
+        print(f"{binary_to_utf8(app)}")
 
     return app
 
@@ -353,7 +378,12 @@ def decode_ldpc_with_real_LLRs():
 
     LLRs_block_1 = LLRs(complex_vals, c_k, sigma, A)
     decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
-    print(f"\nLDPC with calculated LLRs as UTF8: \n{binary_to_utf8(decoded_raw_data)}")
+
+    print(f"LDPC with calculated LLRs as UTF8:")
+    calculate_error_rates(sent_binary, decoded_raw_data)
+
+    if show_decoded_messages:
+        print(f"{binary_to_utf8(decoded_raw_data)}")
 
     return decoded_raw_data
 
@@ -402,5 +432,3 @@ def extract_metadata(recovered_bitstream):
     return file_name, file_type, file_size_bits
 
 # extract_metadata(first_half_systematic_data)
-
-x = np.load(f"Data_files/example_file_data_extended_zeros.npy")  # this is the file used to calculated error rates
