@@ -2,7 +2,7 @@ import numpy as np
 from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
 import sounddevice as sd
-from scipy.signal import chirp, correlate
+from scipy.signal import chirp, correlate, find_peaks
 from math import sqrt
 from ldpc_jossy.py import ldpc
 from bitarray import bitarray
@@ -25,8 +25,9 @@ chirp_duration = parameters.chirp_duration
 chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
 chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
 chirp_type = parameters.chirp_type                   # chirp type
+chirp_sample_count = chirp_duration * sample_rate
 # number of samples of data (HOW IS THIS FOUND)
-recording_data_len = parameters.recording_data_len
+# recording_data_len = parameters.recording_data_len
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 num_data_bins = upper_bin-lower_bin+1
@@ -66,6 +67,20 @@ detected_index = np.argmax(matched_filter_first_half)
 print(detected_index)
 print(f"The index of the matched filter output is {detected_index}")
 
+def detect_chirps(recording, dist = 5):
+    matched_filter_output = correlate(recording, chirp_sig, mode='full') # mode = 'full' => max index detected is at the end of chirp
+    indices, _ = find_peaks(matched_filter_output, height = 0.5*max(matched_filter_output), distance = sample_rate * dist)
+    start_chirp_index, end_chirp_index = indices[0], indices[-1]
+    data_start_index = start_chirp_index + prefix_len
+    data_end_index = end_chirp_index - chirp_sample_count - prefix_len
+    recording_data_len = data_end_index - data_start_index + 1
+    excess_len = recording_data_len % symbol_len
+    
+    data_end_index = data_end_index + symbol_len - excess_len # always add samples and throw out a symbol later if required (based on metadata)
+    return data_start_index, data_end_index
+
+a,b = detect_chirps(recording)
+recording_data_len = int(b - a + 1)
 
 # Re-sync off for now
 do_cyclic_resynch = True
@@ -253,9 +268,9 @@ def error(compare1, compare2, test, print_out):
 
 
 x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-x = x.reshape(num_unknown_symbols, num_data_bins)
 
-for symbol_index in range(num_known_symbols, num_symbols):
+def decode_one_symbol(symbol_index):
+    global channel_estimate
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
     complex_data = received_datachunk[lower_bin : upper_bin + 1]
     complex_data = complex_data.reshape(1, num_data_bins)
@@ -283,7 +298,6 @@ for symbol_index in range(num_known_symbols, num_symbols):
     differences = error(app, x[symbol_index-num_known_symbols], f'decoded against original sent BLOCK {symbol_index}', True)
     if differences != 0: 
         print(f'Failed at block {symbol_index}')
-        break
     #------------------------------------------------------
 
     re_encoded_bits = encode_data(app)[0]
@@ -293,6 +307,62 @@ for symbol_index in range(num_known_symbols, num_symbols):
     new_estimate = ofdm_datachunks[symbol_index]/ new_known_datachunk[0]
     alpha = 0.6
     channel_estimate = alpha * channel_estimate + (1 - alpha) * new_estimate
+    return app
+
+_, _, num_bits_in_file = extract_metadata(decode_one_symbol(num_known_symbols))
+true_num_unknown_symbols = int(np.ceil(num_bits_in_file/num_data_bins))
+x = x.reshape(true_num_unknown_symbols, num_data_bins)
+num_symbols = true_num_unknown_symbols + num_known_symbols
+
+if true_num_unknown_symbols < num_unknown_symbols:
+    ofdm_datachunks = ofdm_datachunks[: true_num_unknown_symbols + num_known_symbols]
+elif true_num_unknown_symbols > num_unknown_symbols:
+    extra_symbols_needed = true_num_unknown_symbols - num_unknown_symbols
+    recording_data_len = recording_data_len + int(extra_symbols_needed * symbol_len)
+    recording_without_chirp = recording[data_start_index:data_start_index+recording_data_len]
+    time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+    ofdm_datachunks = fft(time_domain_datachunks)
+
+
+for symbol_index in range(num_known_symbols + 1, num_symbols):
+    decode_one_symbol(symbol_index)
+    # received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
+    # complex_data = received_datachunk[lower_bin : upper_bin + 1]
+    # complex_data = complex_data.reshape(1, num_data_bins)
+    # hard_decision_binary_data = complex_data_hard_decision_to_binary(complex_data, 1, num_data_bins)
+
+    # #----------------------------------------------------
+    # # To test against 
+    # first_half_systematic_data_block = hard_decision_binary_data[0][ :num_data_bins]
+    # # first_half_systematic_data_block = list(first_half_systematic_data_block)
+    # first_half_systematic_data.append(first_half_systematic_data_block)
+    # error(first_half_systematic_data, x[symbol_index-num_known_symbols], 'before decoding against sent', False)
+    # # ---------------------------------------------------
+
+    # fake_LLR_multiply = 5
+    # fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data[0])
+
+    # app, it = c.decode(fake_LLR_from_bin)
+    # app = app[:648]
+    # app = np.where(app < 0, 1, 0)
+    # # app = list(app)
+    # recovered_bitstream.append(app)
+
+    # # ----------------------------------------------------
+    # # Printing for testing 
+    # differences = error(app, x[symbol_index-num_known_symbols], f'decoded against original sent BLOCK {symbol_index}', True)
+    # if differences != 0: 
+    #     print(f'Failed at block {symbol_index}')
+    #     break
+    # #------------------------------------------------------
+
+    # re_encoded_bits = encode_data(app)[0]
+    # modulated_re_encoded_bits = qpsk_modulator(re_encoded_bits)
+    # new_known_datachunk = create_ofdm_datachunks(modulated_re_encoded_bits, datachunk_len, lower_bin, upper_bin)
+
+    # new_estimate = ofdm_datachunks[symbol_index]/ new_known_datachunk[0]
+    # alpha = 0.6
+    # channel_estimate = alpha * channel_estimate + (1 - alpha) * new_estimate
 
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
@@ -321,7 +391,7 @@ file_name, file_type, file_size_bits = extract_metadata(recovered_bitstream)
 print(file_name, file_type, file_size_bits)
 
 metadata_bits_len = 8 * (len(file_name) + len(file_type) + len(str(file_size_bits)) + 7)
-bit_arr = bitarray(recovered_bitstream[metadata_bits_len:].tolist())
+bit_arr = bitarray(recovered_bitstream[metadata_bits_len : metadata_bits_len + file_size_bits].tolist())
     
 with open(f'{file_name}.{file_type}', "bw") as f:
     bit_arr.tofile(f)
