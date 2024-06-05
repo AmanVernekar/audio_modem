@@ -212,7 +212,7 @@ ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_firs
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
-phase = True
+phase = False
 if phase: 
     known_datachunk_data_bins = known_datachunk[0][lower_bin:upper_bin+1]
     phases = np.where(np.isclose(known_datachunk_data_bins, (1+1j)), 0, 

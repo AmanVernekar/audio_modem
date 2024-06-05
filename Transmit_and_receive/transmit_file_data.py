@@ -118,7 +118,7 @@ def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bi
     
     # insert information in OFDM blocks: 
     # we want to change this to changing phase instead of replacing 
-    phase_insertion = True
+    phase_insertion = False
     if phase_insertion: 
         phases = np.where(separated_mod_sequence == (1+1j), 0, 
             np.where(separated_mod_sequence == (-1+1j), np.pi/2, 
