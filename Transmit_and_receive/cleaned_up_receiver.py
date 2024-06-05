@@ -236,6 +236,21 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
 
     return data_bin
 
+def binary_to_utf8(binary_list):
+    # Join the list of integers into a single string
+    binary_str = ''.join(str(bit) for bit in binary_list)
+
+    # Split the binary string into 8-bit chunks (bytes)
+    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
+
+    # Convert each byte to its corresponding UTF-8 character
+    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
+
+    # Join the UTF-8 characters to form the final string
+    utf8_string = ''.join(utf8_chars)
+
+    return utf8_string
+
 def do_ldpc_decoding(complex_data):
     """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
     hard_binary_data, soft_binary_data = (0, 0)  # placeholder
@@ -255,9 +270,11 @@ def decode_without_ldpc():
     flattened_first_halfs = first_half_systematic_data.flatten()
     flattened_first_halfs = list(flattened_first_halfs)
 
-    print(f"Without LDPC as UTF8: {binary_to_utf8(flattened_first_halfs)}")
-
     return flattened_first_halfs
+
+decode_without_ldpc()
+decoded_without_LDPC = decode_without_ldpc()
+print(f"Without LDPC as UTF8: {binary_to_utf8(decoded_without_LDPC)}")
 
 def decode_ldpc_hard_decision():
     """Returns decoded binary array"""
@@ -273,31 +290,15 @@ hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbol
 
 
 first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-# print("shape of binary data: ", first_half_systematic_data.shape)
 
 flattened_first_halfs = first_half_systematic_data.flatten()
 flattened_first_halfs = list(flattened_first_halfs)
 
 
-def binary_to_utf8(binary_list):
-    # Join the list of integers into a single string
-    binary_str = ''.join(str(bit) for bit in binary_list)
 
-    # Split the binary string into 8-bit chunks (bytes)
-    bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
-
-    # Convert each byte to its corresponding UTF-8 character
-    utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
-
-    # Join the UTF-8 characters to form the final string
-    utf8_string = ''.join(utf8_chars)
-
-    return utf8_string
 
 
 # Not currently in use:
-
-
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
 
