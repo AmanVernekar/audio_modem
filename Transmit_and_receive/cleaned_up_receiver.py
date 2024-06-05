@@ -9,16 +9,20 @@ from ldpc_jossy.py import ldpc
 import parameters
 import our_chirp
 
-datachunk_len = parameters.datachunk_len             # length of the data in the OFDM symbol
+# length of the data in the OFDM symbol
+datachunk_len = parameters.datachunk_len
 prefix_len = parameters.prefix_len                   # length of cyclic prefix
 symbol_len = parameters.symbol_len                   # total length of symbol
 sample_rate = parameters.sample_rate                 # samples per second
-rec_duration = parameters.rec_duration               # duration of recording in seconds
-chirp_duration = parameters.chirp_duration           # duration of chirp in seconds
+# duration of recording in seconds
+rec_duration = parameters.rec_duration
+# duration of chirp in seconds
+chirp_duration = parameters.chirp_duration
 chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
 chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
 chirp_type = parameters.chirp_type                   # chirp type
-recording_data_len = parameters.recording_data_len   # number of samples of data (HOW IS THIS FOUND)
+# number of samples of data (HOW IS THIS FOUND)
+recording_data_len = parameters.recording_data_len
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 num_data_bins = upper_bin-lower_bin+1
@@ -31,11 +35,12 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 chirp_sig = our_chirp.chirp_sig
 
 do_real_recording = True
- 
- # Determines if we record in real life or get file which is already recorded
+
+# Determines if we record in real life or get file which is already recorded
 if do_real_recording:
     # Using real recording
-    recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
+    recording = sd.rec(sample_rate*rec_duration,
+                       samplerate=sample_rate, channels=1, dtype='float32')
     sd.wait()
 
     recording = recording.flatten()  # Flatten to 1D array if necessary
@@ -50,7 +55,8 @@ else:
 # The matched_filter_output has been changed to full as this is the default method and might be easier to work with
 # this means that the max index detected is now at the end of the chirp
 matched_filter_output = correlate(recording, chirp_sig, mode='full')
-matched_filter_first_half = matched_filter_output[:int(len(matched_filter_output)/2)]
+matched_filter_first_half = matched_filter_output[:int(
+    len(matched_filter_output)/2)]
 
 detected_index = np.argmax(matched_filter_first_half)
 print(detected_index)
@@ -68,9 +74,9 @@ if do_cyclic_resynch:
     channel_fft = detected_fft/chirp_fft
     channel_impulse = ifft(channel_fft)
 
-    # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
+    # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response
     # functions to choose the start of the impulse
-    def impulse_start_10_90_jump(channel_impulse):   
+    def impulse_start_10_90_jump(channel_impulse):
         channel_impulse_max = np.max(channel_impulse)
         channel_impulse_10_percent = 0.1 * channel_impulse_max
         channel_impulse_90_percent = 0.6 * channel_impulse_max
@@ -87,7 +93,6 @@ if do_cyclic_resynch:
 
         return impulse_start
 
-
     def impulse_start_max(channel_impulse):
         impulse_start = np.argmax(abs(channel_impulse))
         # print(impulse_start)
@@ -95,7 +100,6 @@ if do_cyclic_resynch:
             impulse_start = impulse_start - len(channel_impulse)
         # print(impulse_start)
         return impulse_start
-
 
     impulse_shift = impulse_start_max(channel_impulse)
 else:
@@ -106,52 +110,60 @@ else:
 
 optimisation_resynch = False
 
+
 def estimate_channel_from_known_ofdm():
-        channel_fft = ofdm_datachunks[0]/known_datachunk[0]
-        return channel_fft
+    channel_fft = ofdm_datachunks[0]/known_datachunk[0]
+    return channel_fft
+
 
 if optimisation_resynch:
-    shifts = range(-100,100)
+    shifts = range(-100, 100)
     total_errors = np.zeros((len(shifts)))
 
     # -------------------------------------------------------------------------------------------------------------
     # Please look at this bit I don't get it
-    source_mod_seq = np.load(f"Data_files/mod_seq_example_file.npy")[num_known_symbols*num_data_bins:]
+    source_mod_seq = np.load(
+        f"Data_files/mod_seq_example_file.npy")[num_known_symbols*num_data_bins:]
 
     sent_signal = np.load(f'Data_files/example_file_overall_sent.npy')
     data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_samples)
     end_start_sent_signal = (prefix_len*2) + (chirp_samples)
-    sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
+    sent_without_chirp = sent_signal[data_start_sent_signal: -
+                                     end_start_sent_signal]
     print("sent data length", len(sent_without_chirp))
     num_symbols = int(len(sent_without_chirp)/symbol_len)
     print("num of symbols: ", num_symbols)
-    sent_datachunks = np.array(np.array_split(sent_without_chirp, num_symbols))[:, prefix_len:]
+    sent_datachunks = np.array(np.array_split(
+        sent_without_chirp, num_symbols))[:, prefix_len:]
 
-    colors = np.where(source_mod_seq == (1+1j), "b", 
-                np.where(source_mod_seq == (-1+1j), "c", 
-                np.where(source_mod_seq == (-1-1j), "m", 
-                np.where(source_mod_seq == (1-1j), "y", 
-                "Error"))))
-
-
-    
+    colors = np.where(source_mod_seq == (1+1j), "b",
+                      np.where(source_mod_seq == (-1+1j), "c",
+                               np.where(source_mod_seq == (-1-1j), "m",
+                                        np.where(source_mod_seq == (1-1j), "y",
+                                                 "Error"))))
 
     for g, shift in enumerate(shifts):
 
         data_start_index = detected_index+shift+prefix_len
-        recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+        recording_without_chirp = recording[data_start_index:
+                                            data_start_index+recording_data_len]
 
         # STEP 5: cut into different blocks and get rid of cyclic prefix
-        num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
-        if g == 0: 
+        num_symbols = int(len(recording_without_chirp) /
+                          symbol_len)  # Number of symbols
+        if g == 0:
             print("num_symbols_calc: ", num_symbols)
-        time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
-        ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+        time_domain_datachunks = np.array(np.array_split(
+            recording_without_chirp, num_symbols))[:, prefix_len:]
+        # Does the fft of all symbols individually
+        ofdm_datachunks = fft(time_domain_datachunks)
 
         channel_estimate = estimate_channel_from_known_ofdm()
 
-        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
-        data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+        # Divide each value by its corrosponding channel fft coefficient.
+        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+        # Selects the values from 1 to 511
+        data = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
         total_error = 0
 
@@ -160,7 +172,7 @@ if optimisation_resynch:
         for w, value in enumerate(_data):
             sent = _source_mod_seq[w]
             if value.real/sent.real < 0 or value.imag/sent.imag < 0:
-                        total_error = total_error + 1
+                total_error = total_error + 1
 
         total_errors[g] = total_error*10/len(_data)
 
@@ -169,7 +181,6 @@ if optimisation_resynch:
     plt.ylabel("Bit error percentage (%)")
     plt.xlabel("Index")
     # plt.show()
-
 
     best_shift = shifts[np.argmin(total_errors)]
     print(best_shift)
@@ -181,42 +192,54 @@ else:
 # -------------------------------------------------------------------------------------------------------------
 # Please look at this bit I don't get it
 
-# Refinding the data from the best shift. 
+# Refinding the data from the best shift.
 data_start_index = detected_index+best_shift+prefix_len
-recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+recording_without_chirp = recording[data_start_index:
+                                    data_start_index+recording_data_len]
 
-num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
-time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
-ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols
+time_domain_datachunks = np.array(np.array_split(
+    recording_without_chirp, num_symbols))[:, prefix_len:]
+# Does the fft of all symbols individually
+ofdm_datachunks = fft(time_domain_datachunks)
 
 channel_estimate = estimate_channel_from_known_ofdm()
 
-ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
-data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+# Divide each value by its corrosponding channel fft coefficient.
+ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+# Selects the values from 1 to 511
+data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
 num_unknown_symbols = num_symbols - num_known_symbols
 
 # -------------------------------------------------------------------------------------------------------------
 
 # Move all of the LDPC stuff below in here
+
+
 def do_ldpc_decoding(complex_data):
     """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
-    hard_binary_data, soft_binary_data = (0,0) #placeholder
+    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
     return hard_binary_data, soft_binary_data
 
 
 def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
     data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
 
-    data_bin[(data_complex.real > 0) & (data_complex.imag > 0)] = [0, 0]  # [0, 0]
-    data_bin[(data_complex.real < 0) & (data_complex.imag > 0)] = [0, 1]  # [0, 1]
-    data_bin[(data_complex.real < 0) & (data_complex.imag < 0)] = [1, 1]  # [1, 1]
-    data_bin[(data_complex.real > 0) & (data_complex.imag < 0)] = [1, 0]  # [1, 0]
+    data_bin[(data_complex.real > 0) & (
+        data_complex.imag > 0)] = [0, 0]  # [0, 0]
+    data_bin[(data_complex.real < 0) & (
+        data_complex.imag > 0)] = [0, 1]  # [0, 1]
+    data_bin[(data_complex.real < 0) & (
+        data_complex.imag < 0)] = [1, 1]  # [1, 1]
+    data_bin[(data_complex.real > 0) & (
+        data_complex.imag < 0)] = [1, 0]  # [1, 0]
 
     return data_bin
 
 
-data_bin = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+data_bin = complex_data_hard_decision_to_binary(
+    data_complex, num_unknown_symbols, num_data_bins)
 # Reshape the array to (105, 1296)
 data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
 
@@ -227,24 +250,29 @@ first_half_systematic_data = data_bin[:, :num_data_bins]
 flattened_first_halfs = first_half_systematic_data.flatten()
 flattened_first_halfs = list(flattened_first_halfs)
 
+
 def binary_to_utf8(binary_list):
     # Join the list of integers into a single string
     binary_str = ''.join(str(bit) for bit in binary_list)
-    
+
     # Split the binary string into 8-bit chunks (bytes)
     bytes_list = [binary_str[i:i+8] for i in range(0, len(binary_str), 8)]
-    
+
     # Convert each byte to its corresponding UTF-8 character
     utf8_chars = [chr(int(byte, 2)) for byte in bytes_list]
-    
+
     # Join the UTF-8 characters to form the final string
     utf8_string = ''.join(utf8_chars)
-    
+
     return utf8_string
 
-print(f"First half of OFDM symbol as UTF8: {binary_to_utf8(flattened_first_halfs)}")
+
+print(
+    f"First half of OFDM symbol as UTF8: {binary_to_utf8(flattened_first_halfs)}")
 
 # Not currently in use:
+
+
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
 
@@ -267,7 +295,7 @@ def extract_metadata(recovered_bitstream):
                 break
         else:
             file_name_and_type += chr(byte)
-    
+
     file_parts = file_name_and_type.split('.')
     file_name = file_parts[0]  # The part before the dot
     file_type = file_parts[1]  # The part after the dot
@@ -282,18 +310,18 @@ def extract_metadata(recovered_bitstream):
     # Convert file size back to integer
     file_size_bits = int(file_size_bits)
 
-
     return file_name, file_type, file_size_bits
 
 # extract_metadata(first_half_systematic_data)
+
 
 z = parameters.ldpc_z
 k = parameters.ldpc_k
 c = ldpc.code('802.16', '1/2', z)
 
 # y = []
-fake_LLR_multiply = 5 
-# for i in range(len(first_data_bin)): 
+fake_LLR_multiply = 5
+# for i in range(len(first_data_bin)):
 #      y.append( fake_LLR_multiply * (.5 - first_data_bin[i]))
 
 fake_LLR_from_bin = fake_LLR_multiply * (0.5 - data_bin)
@@ -311,21 +339,23 @@ compare3 = app
 
 print(f"Hard decision boundary decoded as UTF8: {binary_to_utf8(app)}")
 
-def error(compare1, compare2, test): 
+
+def error(compare1, compare2, test):
     wrong = 0
-    for i in range(len(compare1)): 
-        if int(compare1[i]) != compare2[i]: 
+    for i in range(len(compare1)):
+        if int(compare1[i]) != compare2[i]:
             wrong = wrong + 1
     print("# of bit errors: ", wrong)
-    print(test, " : ", (wrong/ len(compare1))*100, "%")
+    print(test, " : ", (wrong / len(compare1))*100, "%")
+
 
 error(compare1, compare2, '1 against 2')
 error(compare2, compare3, '2 against 3')
 
 
-def LLRs(complex_vals, c_k, sigma_square, A): 
+def LLRs(complex_vals, c_k, sigma_square, A):
     LLR_list = []
-    for i in range(len(complex_vals)): 
+    for i in range(len(complex_vals)):
         # c_conj = c_k[i].conjugate()
         c_squared = (np.abs(c_k[i]))**2
         L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
@@ -335,44 +365,48 @@ def LLRs(complex_vals, c_k, sigma_square, A):
 
     return LLR_list
 
-def decode_data(LLRs, chunks_num): 
+
+def decode_data(LLRs, chunks_num):
     LLRs_split = np.array(np.array_split(LLRs, chunks_num))
-     
+
     decoded_list = []
-    for i in range(chunks_num): 
+    for i in range(chunks_num):
         decoded_chunk, it = c.decode(LLRs_split[i])
         decoded_list.append(decoded_chunk)
-    
+
     decoded_data = np.concatenate(decoded_list)
     # decoded_data = (decoded_data < 0).astype(int)
     decoded_data = np.where(decoded_data < 0, 1, 0)
 
-    decoded_data_split = np.array(np.array_split(decoded_data, chunks_num))[:, : 648]
+    decoded_data_split = np.array(
+        np.array_split(decoded_data, chunks_num))[:, : 648]
     decoded_raw_data = np.concatenate(decoded_data_split)
 
     return decoded_raw_data
 
+
 c_k = channel_estimate[lower_bin:upper_bin+1]
 # sigma_square = 0.2
+
 
 def average_magnitude(complex_array):
     # Calculate the magnitudes of the complex numbers
     magnitudes = np.abs(complex_array)
-    
+
     # Calculate the average of the magnitudes
     average_mag = np.mean(magnitudes)
-    
+
     return average_mag
 
 
 A = average_magnitude(data_complex[0])
 print("A: ", A)
 
-sigma_vals = [1]                      #    np.linspace(0.01, 5, 20)
+sigma_vals = [1]
 complex_vals = data_complex.flatten()
 
-for i in sigma_vals: 
-     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
-     decoded_raw_data = decode_data(LLRs_block_1, chunks_num = 1)
-     compare4 = decoded_raw_data
-     error(compare2, compare4, '2 against 4')
+for i in sigma_vals:
+    LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
+    decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
+    compare4 = decoded_raw_data
+    error(compare2, compare4, '2 against 4')
