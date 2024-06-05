@@ -173,7 +173,7 @@ if play_waveform:
 
 np.save(f'Data_files/example_file_overall_sent.npy', overall_sig)
 
-output_file = f'Data_files/example_file_audio_to_test_with.wav'
+output_file = f'Data_files/new_example_file_audio_to_test_with.wav'
 sf.write(output_file, overall_sig, sample_rate)
 
 print(len(concatenated_blocks))
