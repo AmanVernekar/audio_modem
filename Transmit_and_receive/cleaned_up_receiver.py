@@ -158,10 +158,10 @@ if optimisation_resynch:
         # Does the fft of all symbols individually
         ofdm_datachunks = fft(time_domain_datachunks)
 
-        channel_estimate = estimate_channel_from_known_ofdm()
+        channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 
         # Divide each value by its corrosponding channel fft coefficient.
-        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
         # Selects the values from 1 to 511
         data = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
@@ -189,8 +189,10 @@ if optimisation_resynch:
 else:
     best_shift = 0
 
+
+# STEP: Get complex values from the data using our best synchronisation estimate:
+# I haven't looked at this bit
 # -------------------------------------------------------------------------------------------------------------
-# Please look at this bit I don't get it
 
 # Refinding the data from the best shift.
 data_start_index = detected_index+best_shift+prefix_len
@@ -203,10 +205,10 @@ time_domain_datachunks = np.array(np.array_split(
 # Does the fft of all symbols individually
 ofdm_datachunks = fft(time_domain_datachunks)
 
-channel_estimate = estimate_channel_from_known_ofdm()
+channel_estimate_from_first_symbol = estimate_channel_from_known_ofdm()
 
 # Divide each value by its corrosponding channel fft coefficient.
-ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate
+ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate_from_first_symbol
 # Selects the values from 1 to 511
 data_complex = ofdm_datachunks[:, lower_bin:upper_bin+1]
 
@@ -216,14 +218,11 @@ num_unknown_symbols = num_symbols - num_known_symbols
 
 # Move all of the LDPC stuff below in here
 
-
-def do_ldpc_decoding(complex_data):
-    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
-    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
-    return hard_binary_data, soft_binary_data
-
-
 def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins):
+    """Uses hard decision boundaries to map complex data to binary"""
+    
+    # This uses our current code. However, surely data_bin should have length len(data_complex)? maybe not
+
     data_bin = np.zeros((num_unknown_symbols, num_data_bins, 2), dtype=int)
 
     data_bin[(data_complex.real > 0) & (
@@ -236,6 +235,12 @@ def complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_
         data_complex.imag < 0)] = [1, 0]  # [1, 0]
 
     return data_bin
+
+def do_ldpc_decoding(complex_data):
+    """Uses LDPC to go from complex data from 1 received OFDM symbol to the information data"""
+    hard_binary_data, soft_binary_data = (0, 0)  # placeholder
+    return hard_binary_data, soft_binary_data
+
 
 
 data_bin = complex_data_hard_decision_to_binary(
@@ -385,7 +390,7 @@ def decode_data(LLRs, chunks_num):
     return decoded_raw_data
 
 
-c_k = channel_estimate[lower_bin:upper_bin+1]
+c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
 # sigma_square = 0.2
 
 
