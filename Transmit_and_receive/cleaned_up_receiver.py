@@ -277,9 +277,87 @@ def decode_without_ldpc():
 decode_without_ldpc()
 
 
+
+ldpc_z = parameters.ldpc_z
+ldpc_type = parameters.ldpc_type  # '802.16'
+ldpc_rate = parameters.ldpc_rate  # '1/2'
+c = ldpc.code(ldpc_type, ldpc_rate, ldpc_z)
+
+def decode_ldpc_hard_decision():
+    """Returns decoded binary array"""
+
+    fake_LLR_multiply = 5
+
+    hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
+    hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
+    fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
+
+    app, it = c.decode(fake_LLR_from_bin[0])
+    app = app[:648]
+
+    app = np.where(app < 0, 1, 0)
+
+    print(f"\nLDPC with hard decisions as UTF8: \n{binary_to_utf8(app)}")
+
+    return app
+
+decode_ldpc_hard_decision()
+
 def decode_ldpc_with_real_LLRs(): 
     """Returns decoded binary array"""
-    return None
+
+    def LLRs(complex_vals, c_k, sigma_square, A):
+        LLR_list = []
+        for i in range(len(complex_vals)):
+            # c_conj = c_k[i].conjugate()
+            c_squared = (np.abs(c_k[i]))**2
+            L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
+            LLR_list.append(L_1)
+            L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
+            LLR_list.append(L_2)
+
+        return LLR_list
+
+    def decode_data(LLRs, chunks_num):
+        LLRs_split = np.array(np.array_split(LLRs, chunks_num))
+
+        decoded_list = []
+        for i in range(chunks_num):
+            decoded_chunk, it = c.decode(LLRs_split[i])
+            decoded_list.append(decoded_chunk)
+
+        decoded_data = np.concatenate(decoded_list)
+        decoded_data = np.where(decoded_data < 0, 1, 0)
+
+        decoded_data_split = np.array(
+            np.array_split(decoded_data, chunks_num))[:, : 648]
+        decoded_raw_data = np.concatenate(decoded_data_split)
+
+        return decoded_raw_data
+    
+    c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
+
+    def average_magnitude(complex_array):
+        # Calculate the magnitudes of the complex numbers
+        magnitudes = np.abs(complex_array)
+
+        # Calculate the average of the magnitudes
+        average_mag = np.mean(magnitudes)
+
+        return average_mag
+
+    A = average_magnitude(data_complex[0])
+
+    complex_vals = data_complex.flatten()
+    sigma = 1
+
+    LLRs_block_1 = LLRs(complex_vals, c_k, sigma, A)
+    decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
+    print(f"\nLDPC with calculated LLRs as UTF8: \n{binary_to_utf8(decoded_raw_data)}")
+
+    return decoded_raw_data
+
+decode_ldpc_with_real_LLRs()
 
 
 # Not currently in use:
@@ -325,117 +403,4 @@ def extract_metadata(recovered_bitstream):
 
 # extract_metadata(first_half_systematic_data)
 
-
-# ---------------------------------------------------------------------
-
-ldpc_z = parameters.ldpc_z
-ldpc_type = parameters.ldpc_type  # '802.16'
-ldpc_rate = parameters.ldpc_rate  # '1/2'
-c = ldpc.code(ldpc_type, ldpc_rate, ldpc_z)
-
-def decode_ldpc_hard_decision():
-    """Returns decoded binary array"""
-
-    fake_LLR_multiply = 5
-
-    hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-    hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
-    fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
-
-    app, it = c.decode(fake_LLR_from_bin[0])
-    app = app[:648]
-
-    app = np.where(app < 0, 1, 0)
-
-    print(f"\nLDPC with hard decisions as UTF8: \n{binary_to_utf8(app)}")
-
-decode_ldpc_hard_decision()
-
-# fake_LLR_multiply = 5
-
-# hard_decision_binary_data = complex_data_hard_decision_to_binary(data_complex, num_unknown_symbols, num_data_bins)
-# hard_decision_binary_data = hard_decision_binary_data.reshape(num_unknown_symbols, num_data_bins*2)
-# fake_LLR_from_bin = fake_LLR_multiply * (0.5 - hard_decision_binary_data)
-
-# app, it = c.decode(fake_LLR_from_bin[0])
-# app = app[:648]
-# x = np.load(f"Data_files/example_file_data_extended_zeros.npy")
-
-# first_half_systematic_data = hard_decision_binary_data[:, :num_data_bins]
-# compare1 = first_half_systematic_data[0]
-# compare2 = x
-
-# app = np.where(app < 0, 1, 0)
-# compare3 = app
-
-# print(f"LDPC with hard decisions as UTF8: {binary_to_utf8(app)}")
-
-
-# def error(compare1, compare2, test):
-#     wrong = 0
-#     for i in range(len(compare1)):
-#         if int(compare1[i]) != compare2[i]:
-#             wrong = wrong + 1
-#     print("# of bit errors: ", wrong)
-#     print(test, " : ", (wrong / len(compare1))*100, "%")
-
-
-# error(compare1, compare2, '1 against 2')
-# error(compare2, compare3, '2 against 3')
-
-
-# def LLRs(complex_vals, c_k, sigma_square, A):
-#     LLR_list = []
-#     for i in range(len(complex_vals)):
-#         # c_conj = c_k[i].conjugate()
-#         c_squared = (np.abs(c_k[i]))**2
-#         L_1 = (A*c_squared*complex_vals[i].imag) / (sigma_square)
-#         LLR_list.append(L_1)
-#         L_2 = (A*c_squared*complex_vals[i].real) / (sigma_square)
-#         LLR_list.append(L_2)
-
-#     return LLR_list
-
-
-# def decode_data(LLRs, chunks_num):
-#     LLRs_split = np.array(np.array_split(LLRs, chunks_num))
-
-#     decoded_list = []
-#     for i in range(chunks_num):
-#         decoded_chunk, it = c.decode(LLRs_split[i])
-#         decoded_list.append(decoded_chunk)
-
-#     decoded_data = np.concatenate(decoded_list)
-#     decoded_data = np.where(decoded_data < 0, 1, 0)
-
-#     decoded_data_split = np.array(
-#         np.array_split(decoded_data, chunks_num))[:, : 648]
-#     decoded_raw_data = np.concatenate(decoded_data_split)
-
-#     return decoded_raw_data
-
-
-# c_k = channel_estimate_from_first_symbol[lower_bin:upper_bin+1]
-
-
-# def average_magnitude(complex_array):
-#     # Calculate the magnitudes of the complex numbers
-#     magnitudes = np.abs(complex_array)
-
-#     # Calculate the average of the magnitudes
-#     average_mag = np.mean(magnitudes)
-
-#     return average_mag
-
-
-# A = average_magnitude(data_complex[0])
-# print("A: ", A)
-
-# sigma_vals = [1]
-# complex_vals = data_complex.flatten()
-
-# for i in sigma_vals:
-#     LLRs_block_1 = LLRs(complex_vals, c_k, i, A)
-#     decoded_raw_data = decode_data(LLRs_block_1, chunks_num=1)
-#     compare4 = decoded_raw_data
-#     error(compare2, compare4, '2 against 4')
+x = np.load(f"Data_files/example_file_data_extended_zeros.npy")  # this is the file used to calculated error rates
