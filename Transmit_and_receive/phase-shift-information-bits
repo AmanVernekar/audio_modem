@@ -1,0 +1,37 @@
+import numpy as np
+import parameters
+
+known_datachunk = parameters.known_datachunk
+known_datachunk = known_datachunk.reshape(1, 4096)
+
+
+def create_ofdm_datachunks(modulated_sequence, chunk_length, lower_bin, upper_bin):
+
+    #  calculate number of information bins
+    num_information_bins = (upper_bin - lower_bin) + 1
+
+    # append with 0s if not modulated_sequence is not multiple of num_information_bins
+    num_zeros = num_information_bins - (len(modulated_sequence) % num_information_bins)
+
+    if num_zeros != num_information_bins:
+        zero_block = np.zeros(num_zeros, dtype=complex)
+        modulated_sequence = np.append(modulated_sequence, zero_block)
+
+    # create new array containing modulated_sequence, where each row corresponds to an OFDM datachunk
+    separated_mod_sequence = np.reshape(modulated_sequence, (-1, num_information_bins)) 
+
+    # create a complex array of ofdm datachunks, where each chunk is the known symbol
+    num_of_symbols = separated_mod_sequence.shape[0]
+    # print(f"num_of_symbols = {num_of_symbols}")
+    # print(f"The shape of the known datachunk is {known_datachunk.shape}")
+    ofdm_datachunk_array = np.tile(known_datachunk,(num_of_symbols, 1))
+    # print(f"The shape of the ofdm_datachunk_array is {ofdm_datachunk_array.shape}")
+    
+    # insert information in OFDM blocks: 
+    # we want to change this to changing phase instead of replacing 
+    ofdm_datachunk_array[:, lower_bin:upper_bin+1] = separated_mod_sequence  # populates first half of block
+    ofdm_datachunk_array[:, chunk_length-upper_bin:(chunk_length-lower_bin)+1] = np.fliplr(np.conjugate(separated_mod_sequence))  # second half of block
+    
+    
+
+    return ofdm_datachunk_array  # returns array of OFDM blocks
