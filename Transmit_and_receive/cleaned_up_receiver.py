@@ -32,6 +32,7 @@ chirp_sig = our_chirp.chirp_sig
 
 do_real_recording = True
  
+ # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
     # Using real recording
     recording = sd.rec(sample_rate*rec_duration, samplerate=sample_rate, channels=1, dtype='float32')
@@ -44,7 +45,7 @@ else:
     # Using saved recording
     recording = np.load(f"Data_files/example_file_recording_to_test_with.npy")
 
-# STEP 2: initially synchronise
+# STEP 2: Initial Synchronisation
 
 # The matched_filter_output has been changed to full as this is the default method and might be easier to work with
 # this means that the max index detected is now at the end of the chirp
@@ -53,120 +54,128 @@ matched_filter_first_half = matched_filter_output[:int(len(matched_filter_output
 
 detected_index = np.argmax(matched_filter_first_half)
 print(detected_index)
+print(f"The index of the matched filter output is {detected_index}")
 
 
-# Re-sync commented out for now 
-# Use matched filter to take out the chirp from the recording
-# chirp_fft = fft(chirp_sig)
-# detected_chirp = recording[detected_index-chirp_samples:detected_index]
-# detected_fft = fft(detected_chirp)
-# channel_fft = detected_fft/chirp_fft
-# channel_impulse = ifft(channel_fft)
+# Re-sync off for now
+do_cyclic_resynch = False
 
-# # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
-# # functions to choose the start of the impulse
-# def impulse_start_10_90_jump(channel_impulse):   
-#     channel_impulse_max = np.max(channel_impulse)
-#     channel_impulse_10_percent = 0.1 * channel_impulse_max
-#     channel_impulse_90_percent = 0.6 * channel_impulse_max
+if do_cyclic_resynch:
+    # Use matched filter to take out the chirp from the recording
+    chirp_fft = fft(chirp_sig)
+    detected_chirp = recording[detected_index-chirp_samples:detected_index]
+    detected_fft = fft(detected_chirp)
+    channel_fft = detected_fft/chirp_fft
+    channel_impulse = ifft(channel_fft)
 
-#     impulse_start = 0
+    # STEP 3: resynchronise and compute channel coefficients from fft of channel impulse response 
+    # functions to choose the start of the impulse
+    def impulse_start_10_90_jump(channel_impulse):   
+        channel_impulse_max = np.max(channel_impulse)
+        channel_impulse_10_percent = 0.1 * channel_impulse_max
+        channel_impulse_90_percent = 0.6 * channel_impulse_max
 
-#     for i in range(len(channel_impulse) - 1):
-#         if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 5] > channel_impulse_90_percent:
-#             impulse_start = i + 5
-#             break
+        impulse_start = 0
 
-#     if impulse_start > len(channel_impulse) / 2:
-#         impulse_start = impulse_start - len(channel_impulse)
+        for i in range(len(channel_impulse) - 1):
+            if channel_impulse[i] < channel_impulse_10_percent and channel_impulse[i + 5] > channel_impulse_90_percent:
+                impulse_start = i + 5
+                break
 
-#     return impulse_start
+        if impulse_start > len(channel_impulse) / 2:
+            impulse_start = impulse_start - len(channel_impulse)
 
-
-# def impulse_start_max(channel_impulse):
-#     impulse_start = np.argmax(abs(channel_impulse))
-#     # print(impulse_start)
-#     if impulse_start > len(channel_impulse) / 2:
-#         impulse_start = impulse_start - len(channel_impulse)
-#     # print(impulse_start)
-#     return impulse_start
+        return impulse_start
 
 
-# impulse_shift = impulse_start_max(channel_impulse)
-impulse_shift = 0
-
-shifts = range(-100,100)
-total_errors = np.zeros((len(shifts)))
-
-source_mod_seq = np.load(f"Data_files/mod_seq_example_file.npy")[num_known_symbols*num_data_bins:]
-
-sent_signal = np.load(f'Data_files/example_file_overall_sent.npy')
-data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_samples)
-end_start_sent_signal = (prefix_len*2) + (chirp_samples)
-sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
-print("sent data length", len(sent_without_chirp))
-num_symbols = int(len(sent_without_chirp)/symbol_len)
-print("num of symbols: ", num_symbols)
-sent_datachunks = np.array(np.array_split(sent_without_chirp, num_symbols))[:, prefix_len:]
-
-colors = np.where(source_mod_seq == (1+1j), "b", 
-            np.where(source_mod_seq == (-1+1j), "c", 
-            np.where(source_mod_seq == (-1-1j), "m", 
-            np.where(source_mod_seq == (1-1j), "y", 
-            "Error"))))
+    def impulse_start_max(channel_impulse):
+        impulse_start = np.argmax(abs(channel_impulse))
+        # print(impulse_start)
+        if impulse_start > len(channel_impulse) / 2:
+            impulse_start = impulse_start - len(channel_impulse)
+        # print(impulse_start)
+        return impulse_start
 
 
-def estimate_channel_from_known_ofdm_old(_num_known_symbols):
-        channel_estimates = np.zeros((_num_known_symbols, datachunk_len), dtype='complex')
-        for i in range(_num_known_symbols):
-            channel_fft = ofdm_datachunks[i]/fft(sent_datachunks[i])
-            channel_estimates[i] = channel_fft
-        
-        average_channel_estimate = np.mean(channel_estimates, axis=0)
-        return average_channel_estimate
+    impulse_shift = impulse_start_max(channel_impulse)
+else:
+    impulse_shift = 0
+
+# Process through which we calculate optimal shift with error rates from known OFDM symbols
+# Off for now
+
+optimisation_resynch = False
+
 
 def estimate_channel_from_known_ofdm():
-     channel_fft = ofdm_datachunks[0]/known_datachunk[0]
-     return channel_fft
+        channel_fft = ofdm_datachunks[0]/known_datachunk[0]
+        return channel_fft
 
-for g, shift in enumerate(shifts):
+if optimisation_resynch:
+    shifts = range(-100,100)
+    total_errors = np.zeros((len(shifts)))
 
-    data_start_index = detected_index+shift+prefix_len
-    recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+    source_mod_seq = np.load(f"Data_files/mod_seq_example_file.npy")[num_known_symbols*num_data_bins:]
 
-    # STEP 5: cut into different blocks and get rid of cyclic prefix
-    num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
-    if g == 0: 
-        print("num_symbols_calc: ", num_symbols)
-    time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
-    ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+    sent_signal = np.load(f'Data_files/example_file_overall_sent.npy')
+    data_start_sent_signal = sample_rate + (prefix_len*2) + (chirp_samples)
+    end_start_sent_signal = (prefix_len*2) + (chirp_samples)
+    sent_without_chirp = sent_signal[data_start_sent_signal: - end_start_sent_signal ]
+    print("sent data length", len(sent_without_chirp))
+    num_symbols = int(len(sent_without_chirp)/symbol_len)
+    print("num of symbols: ", num_symbols)
+    sent_datachunks = np.array(np.array_split(sent_without_chirp, num_symbols))[:, prefix_len:]
 
-    channel_estimate = estimate_channel_from_known_ofdm()
-
-    ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
-    data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
-
-    total_error = 0
-
-    _data = data[:num_known_symbols].flatten()
-    _source_mod_seq = source_mod_seq[:num_known_symbols * num_data_bins]
-    for w, value in enumerate(_data):
-        sent = _source_mod_seq[w]
-        if value.real/sent.real < 0 or value.imag/sent.imag < 0:
-                    total_error = total_error + 1
-
-    total_errors[g] = total_error*10/len(_data)
-
-plt.plot(shifts, total_errors)
-plt.axvline(shifts[np.argmin(total_errors)])
-plt.ylabel("Bit error percentage (%)")
-plt.xlabel("Index")
-# plt.show()
+    colors = np.where(source_mod_seq == (1+1j), "b", 
+                np.where(source_mod_seq == (-1+1j), "c", 
+                np.where(source_mod_seq == (-1-1j), "m", 
+                np.where(source_mod_seq == (1-1j), "y", 
+                "Error"))))
 
 
-best_shift = shifts[np.argmin(total_errors)]
-print(best_shift)
-print(np.min(total_errors))
+    
+
+    for g, shift in enumerate(shifts):
+
+        data_start_index = detected_index+shift+prefix_len
+        recording_without_chirp = recording[data_start_index : data_start_index+recording_data_len]
+
+        # STEP 5: cut into different blocks and get rid of cyclic prefix
+        num_symbols = int(len(recording_without_chirp)/symbol_len)  # Number of symbols 
+        if g == 0: 
+            print("num_symbols_calc: ", num_symbols)
+        time_domain_datachunks = np.array(np.array_split(recording_without_chirp, num_symbols))[:, prefix_len:]
+        ofdm_datachunks = fft(time_domain_datachunks)  # Does the fft of all symbols individually 
+
+        channel_estimate = estimate_channel_from_known_ofdm()
+
+        ofdm_datachunks = ofdm_datachunks[num_known_symbols:]/channel_estimate # Divide each value by its corrosponding channel fft coefficient. 
+        data = ofdm_datachunks[:, lower_bin:upper_bin+1] # Selects the values from 1 to 511
+
+        total_error = 0
+
+        _data = data[:num_known_symbols].flatten()
+        _source_mod_seq = source_mod_seq[:num_known_symbols * num_data_bins]
+        for w, value in enumerate(_data):
+            sent = _source_mod_seq[w]
+            if value.real/sent.real < 0 or value.imag/sent.imag < 0:
+                        total_error = total_error + 1
+
+        total_errors[g] = total_error*10/len(_data)
+
+    plt.plot(shifts, total_errors)
+    plt.axvline(shifts[np.argmin(total_errors)])
+    plt.ylabel("Bit error percentage (%)")
+    plt.xlabel("Index")
+    # plt.show()
+
+
+    best_shift = shifts[np.argmin(total_errors)]
+    print(best_shift)
+    print(np.min(total_errors))
+
+else:
+    best_shift = 0
 
 
 # Refinding the data from the best shift. 
@@ -204,7 +213,7 @@ data_bin = data_bin.reshape(num_unknown_symbols, num_data_bins*2)
 # plt.show()
 
 first_half_systematic_data = data_bin[:, :num_data_bins]
-print("binary data len: ", first_half_systematic_data.shape)
+print("shape of binary data: ", first_half_systematic_data.shape)
 
 flattened_first_halfs = first_half_systematic_data.flatten()
 flattened_first_halfs = list(flattened_first_halfs)
@@ -224,7 +233,7 @@ def binary_to_utf8(binary_list):
     
     return utf8_string
 
-print(binary_to_utf8(flattened_first_halfs))
+print(f"First half of binary data as UTF8: {binary_to_utf8(flattened_first_halfs)}")
 
 def extract_metadata(recovered_bitstream):
     byte_sequence = bytearray()
@@ -290,15 +299,15 @@ compare2 = x
 app = np.where(app < 0, 1, 0)
 compare3 = app
 
-print(binary_to_utf8(app))
+print(f"Hard decision boundary decoded as UTF8: {binary_to_utf8(app)}")
 
 def error(compare1, compare2, test): 
     wrong = 0
     for i in range(len(compare1)): 
         if int(compare1[i]) != compare2[i]: 
             wrong = wrong + 1
-    print("wrong: ", wrong)
-    print(test, " : ", (wrong/ len(compare1))*100)
+    print("# of bit errors: ", wrong)
+    print(test, " : ", (wrong/ len(compare1))*100, "%")
 
 error(compare1, compare2, '1 against 2')
 error(compare2, compare3, '2 against 3')
