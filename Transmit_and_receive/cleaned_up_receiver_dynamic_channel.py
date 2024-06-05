@@ -2,7 +2,7 @@ import numpy as np
 from numpy.fft import fft, ifft
 import matplotlib.pyplot as plt
 import sounddevice as sd
-from scipy.signal import chirp, correlate
+from scipy.signal import find_peaks, correlate
 from math import sqrt
 from ldpc_jossy.py import ldpc
 
@@ -23,8 +23,9 @@ chirp_duration = parameters.chirp_duration
 chirp_start_freq = parameters.chirp_start_freq       # chirp start freq
 chirp_end_freq = parameters.chirp_end_freq           # chirp end freq
 chirp_type = parameters.chirp_type                   # chirp type
+chirp_sample_count = chirp_duration * sample_rate
 # number of samples of data (HOW IS THIS FOUND)
-recording_data_len = parameters.recording_data_len
+# recording_data_len = parameters.recording_data_len
 lower_bin = parameters.lower_bin
 upper_bin = parameters.upper_bin
 num_data_bins = upper_bin-lower_bin+1
@@ -36,7 +37,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -64,6 +65,20 @@ detected_index = np.argmax(matched_filter_first_half)
 print(detected_index)
 print(f"The index of the matched filter output is {detected_index}")
 
+def detect_chirps(recording, dist = 5):
+    matched_filter_output = correlate(recording, chirp_sig, mode='full') # mode = 'full' => max index detected is at the end of chirp
+    indices, _ = find_peaks(matched_filter_output, height = 0.5*max(matched_filter_output), distance = sample_rate * dist)
+    start_chirp_index, end_chirp_index = indices[0], indices[-1]
+    data_start_index = start_chirp_index + prefix_len
+    data_end_index = end_chirp_index - chirp_sample_count - prefix_len
+    recording_data_len = data_end_index - data_start_index + 1
+    excess_len = recording_data_len % symbol_len
+    
+    data_end_index = data_end_index + symbol_len - excess_len # always add samples and throw out a symbol later if required (based on metadata)
+    return data_start_index, data_end_index
+
+a,b = detect_chirps(recording)
+recording_data_len = b - a + 1
 
 # Re-sync off for now
 do_cyclic_resynch = False
@@ -241,6 +256,7 @@ first_half_systematic_data = []
 recovered_bitstream = []
 
 def error(compare1, compare2, test):
+    differences = 0
     differences = np.sum(compare1 != compare2)
     total_elements = len(compare1)
     # Calculate the percentage error
