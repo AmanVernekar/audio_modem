@@ -5,11 +5,13 @@ import sounddevice as sd
 from scipy.signal import chirp, correlate
 from math import sqrt
 from ldpc_jossy.py import ldpc
+from bitarray import bitarray
 
 import parameters
 import our_chirp
 
 from transmit_file_data import encode_data, qpsk_modulator, create_ofdm_datachunks
+from files_to_binary import extract_metadata
 
 # length of the data in the OFDM symbol
 datachunk_len = parameters.datachunk_len
@@ -314,6 +316,15 @@ print_out = False
 if print_out: 
     print('Before decoding: ', binary_to_utf8(first_half_systematic_data), '\n')
     print('After decoding: ', binary_to_utf8(recovered_bitstream))
+
+file_name, file_type, file_size_bits = extract_metadata(recovered_bitstream)
+print(file_name, file_type, file_size_bits)
+
+metadata_bits_len = 8 * (len(file_name) + len(file_type) + len(str(file_size_bits)) + 7)
+bit_arr = bitarray(recovered_bitstream[metadata_bits_len:].tolist())
+    
+with open(f'{file_name}.{file_type}', "bw") as f:
+    bit_arr.tofile(f)
 
 
 # Divide each value by its corrosponding channel fft coefficient.
