@@ -36,7 +36,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -276,7 +276,7 @@ for symbol_index in range(1, num_symbols):
 
     # ----------------------------------------------------
     # Printing for testing 
-    error(app, x[symbol_index-1], 'decoded against original sent')
+    error(app, x[symbol_index-1], f'decoded against original sent BLOCK {symbol_index}')
     #------------------------------------------------------
 
     re_encoded_bits = encode_data(app)[0]

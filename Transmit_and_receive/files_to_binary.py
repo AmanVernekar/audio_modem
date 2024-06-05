@@ -104,7 +104,7 @@ def extract_metadata(recovered_bitstream):
     file_name = file_parts[0]  # The part before the dot
     file_type = file_parts[1]  # The part after the dot
 
-    # Extract file size in bits
+    # Extract file size in bits 
     file_size_bits = ""
     for byte in byte_sequence[len(file_name_and_type) + 4:]:
         if byte == 0:
