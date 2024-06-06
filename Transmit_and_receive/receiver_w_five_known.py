@@ -274,6 +274,70 @@ def decode_one_symbol(symbol_index):
     received_datachunk = ofdm_datachunks[symbol_index]/channel_estimate
     complex_data = received_datachunk[lower_bin : upper_bin + 1]
     complex_data = complex_data.reshape(1, num_data_bins)
+    
+
+    compensate_phase = True
+
+    if compensate_phase:
+        # store current shape of complex_data:
+        shape = complex_data.shape
+        print(f"The shape of complex_data is {complex_data.shape}")
+
+        complex_data_before = complex_data.flatten()
+
+        def round_complex_array(arr):
+            # Separate real and imaginary parts
+            real_part = np.real(arr)
+            imag_part = np.imag(arr)
+
+            # Round the real and imaginary parts
+            rounded_real = np.round(real_part)
+            rounded_imag = np.round(imag_part)
+
+            # Combine the rounded parts back into a complex array
+            rounded_arr = rounded_real + 1j * rounded_imag
+
+            return rounded_arr
+
+        def create_rotation_array(num_complex_values):
+            
+            known_ofdm_modulated_sequence = np.resize(known_datachunk[0][lower_bin: upper_bin + 1], num_complex_values)
+            known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
+            rotation_array = np.zeros(num_complex_values, dtype=complex)
+            
+            # Define a tolerance for complex number comparisons
+            tolerance = 1e-9
+
+            # Mapping to rotation values
+            for i in range(len(known_ofdm_modulated_sequence)):
+                val = known_ofdm_modulated_sequence[i]
+                # 1+1j => 1
+                if np.allclose(val, 1+1j, atol=tolerance):
+                    rotation_array[i] = 1+0j
+                # -1+1j => -1j
+                elif np.allclose(val, -1+1j, atol=tolerance):
+                    rotation_array[i] = 0-1j
+                # -1-1j => -1
+                elif np.allclose(val, -1-1j, atol=tolerance):
+                    rotation_array[i] = -1+0j
+                # 1-1j => 1j
+                elif np.allclose(val, 1-1j, atol=tolerance):
+                    rotation_array[i] = 0+1j
+            
+            # print(f"QPSK Modulated sequence: {known_ofdm_modulated_sequence}")
+            
+            return known_ofdm_modulated_sequence, rotation_array
+
+
+        known_ofdm_modulated_sequence, known_ofdm_rotation_array = create_rotation_array(len(complex_data_before))
+        known_ofdm_rotation_array = round_complex_array(known_ofdm_rotation_array)
+
+
+        complex_data = known_ofdm_rotation_array * complex_data
+        complex_data_flat = complex_data
+
+        complex_data = complex_data.reshape(shape)
+
     hard_decision_binary_data = complex_data_hard_decision_to_binary(complex_data, 1, num_data_bins)
 
     #----------------------------------------------------
