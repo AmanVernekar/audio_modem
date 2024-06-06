@@ -311,7 +311,7 @@ def decode_one_symbol(symbol_index):
 
 _, _, num_bits_in_file = extract_metadata(decode_one_symbol(num_known_symbols))
 # true_num_unknown_symbols = int(np.ceil(num_bits_in_file/num_data_bins))
-true_num_unknown_symbols = 77
+true_num_unknown_symbols = 700
 x = x.reshape(true_num_unknown_symbols, num_data_bins)
 num_symbols = true_num_unknown_symbols + num_known_symbols
 
