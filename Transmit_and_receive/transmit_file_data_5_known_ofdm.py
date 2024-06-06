@@ -58,7 +58,7 @@ np.save(f"Data_files/example_file_data_extended_zeros.npy", raw_bin_data_extend)
 # STEP 2: Modulate as complex symbols using QPSK
 phase_insertion = True
 
-if phase_insertion:
+if not phase_insertion:
     def qpsk_modulator(binary_sequence):
         # if binary_sequence has odd number of bits, add 0 at the end
         if len(binary_sequence) % 2 != 0:

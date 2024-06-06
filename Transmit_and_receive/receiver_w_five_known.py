@@ -39,7 +39,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -333,10 +333,10 @@ def decode_one_symbol(symbol_index):
         known_ofdm_rotation_array = round_complex_array(known_ofdm_rotation_array)
 
 
-        complex_data = known_ofdm_rotation_array * complex_data
-        complex_data_flat = complex_data
+        complex_data_before =  complex_data_before * known_ofdm_rotation_array
+        complex_data_before_flat = complex_data_before
 
-        complex_data = complex_data.reshape(shape)
+        complex_data = complex_data_before.reshape(shape)
 
     hard_decision_binary_data = complex_data_hard_decision_to_binary(complex_data, 1, num_data_bins)
 
