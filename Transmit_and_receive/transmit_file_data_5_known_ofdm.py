@@ -56,34 +56,94 @@ raw_bin_data_extend = encode_data(raw_bin_data)[1]
 np.save(f"Data_files/example_file_data_extended_zeros.npy", raw_bin_data_extend)
 
 # STEP 2: Modulate as complex symbols using QPSK
-def qpsk_modulator(binary_sequence):
-    # if binary_sequence has odd number of bits, add 0 at the end
-    if len(binary_sequence) % 2 != 0:
-        binary_sequence = np.append(binary_sequence, 0)
-    
-    # Initialize an empty array to store modulated symbols
-    modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
-    
-    # Mapping to complex symbols using QPSK   !! Do we care about energy of each symbol? !!
-    for i in range(0, len(binary_sequence), 2):
-        bit_pair = binary_sequence[i:i+2]
-        # 00 => 1+j
-        if np.array_equal(bit_pair, [0, 0]):
-            modulated_sequence[i//2] = 1 + 1j
-        # 01 => -1+j
-        elif np.array_equal(bit_pair, [0, 1]):
-            modulated_sequence[i//2] = -1 + 1j
-        # 11 => -1-j
-        elif np.array_equal(bit_pair, [1, 1]):
-            modulated_sequence[i//2] = -1 - 1j
-        # 11 => 1-j
-        elif np.array_equal(bit_pair, [1, 0]):
-            modulated_sequence[i//2] = 1 - 1j
-    
-    # print(f"QPSK Modulated sequence: {modulated_sequence}")
-    return modulated_sequence
+phase_insertion = True
 
-modulated_sequence = qpsk_modulator(coded_info_sequence) 
+if phase_insertion:
+    def qpsk_modulator(binary_sequence):
+        # if binary_sequence has odd number of bits, add 0 at the end
+        if len(binary_sequence) % 2 != 0:
+            binary_sequence = np.append(binary_sequence, 0)
+        
+        # Initialize an empty array to store modulated symbols
+        modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
+        
+        # Mapping to complex symbols using QPSK   !! Do we care about energy of each symbol? !!
+        for i in range(0, len(binary_sequence), 2):
+            bit_pair = binary_sequence[i:i+2]
+            # 00 => 1+j
+            if np.array_equal(bit_pair, [0, 0]):
+                modulated_sequence[i//2] = 1 + 1j
+            # 01 => -1+j
+            elif np.array_equal(bit_pair, [0, 1]):
+                modulated_sequence[i//2] = -1 + 1j
+            # 11 => -1-j
+            elif np.array_equal(bit_pair, [1, 1]):
+                modulated_sequence[i//2] = -1 - 1j
+            # 11 => 1-j
+            elif np.array_equal(bit_pair, [1, 0]):
+                modulated_sequence[i//2] = 1 - 1j
+        
+        # print(f"QPSK Modulated sequence: {modulated_sequence}")
+        return modulated_sequence
+
+    modulated_sequence = qpsk_modulator(coded_info_sequence) 
+else:
+    def qpsk_modulator(binary_sequence):
+        # if binary_sequence has odd number of bits, add 0 at the end
+        if len(binary_sequence) % 2 != 0:
+            binary_sequence = np.append(binary_sequence, 0)
+        
+        # Initialize an empty array to store modulated symbols
+        modulated_sequence = np.empty(len(binary_sequence) // 2, dtype=complex)
+        
+        # Mapping to complex symbols using QPSK
+        for i in range(0, len(binary_sequence), 2):
+            bit_pair = binary_sequence[i:i+2]
+            # 00 => 1
+            if np.array_equal(bit_pair, [0, 0]):
+                modulated_sequence[i//2] = 1
+            # 01 => 1j
+            elif np.array_equal(bit_pair, [0, 1]):
+                modulated_sequence[i//2] = 1j
+            # 11 => -1
+            elif np.array_equal(bit_pair, [1, 1]):
+                modulated_sequence[i//2] = -1
+            # 11 => -1j
+            elif np.array_equal(bit_pair, [1, 0]):
+                modulated_sequence[i//2] = - 1j
+        
+        # print(f"QPSK Modulated sequence: {modulated_sequence}")
+        return modulated_sequence
+
+    pre_modulated_sequence = qpsk_modulator(coded_info_sequence) 
+
+    # new modulated sequence:
+    # create a list of known ofdm bin vals which need phases changing
+    def round_complex_array(arr):
+        # Separate real and imaginary parts
+        real_part = np.real(arr)
+        imag_part = np.imag(arr)
+
+        # Round the real and imaginary parts
+        rounded_real = np.round(real_part)
+        rounded_imag = np.round(imag_part)
+
+        # Combine the rounded parts back into a complex array
+        rounded_arr = rounded_real + 1j * rounded_imag
+
+        return rounded_arr
+
+    known_ofdm_modulated_sequence = np.resize(known_datachunk[0][lower_bin: upper_bin + 1], len(pre_modulated_sequence))
+    known_ofdm_modulated_sequence = round_complex_array(known_ofdm_modulated_sequence)
+    modulated_sequence = pre_modulated_sequence * known_ofdm_modulated_sequence
+
+    def test_modulation_working(i):
+        print(f"Information bits:         {coded_info_sequence[2*i:2*(i+1)]}")
+        print(f"Rotation term:            {pre_modulated_sequence[i]}")
+        print(f"Known OFDM complex value: {known_ofdm_modulated_sequence[i]}")
+        print(f"Result:                   {modulated_sequence[i]}")
+
+    test_modulation_working(150)
 
 # STEP 2.5: add beginning of known datachunk to binary array and save
 # This is used for testing, when we check errors.
