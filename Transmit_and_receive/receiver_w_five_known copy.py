@@ -39,7 +39,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -71,8 +71,13 @@ def detect_chirps(recording, dist = 5):
     matched_filter_output = correlate(recording, chirp_sig, mode='full') # mode = 'full' => max index detected is at the end of chirp
     indices, _ = find_peaks(matched_filter_output, height = 0.5*max(matched_filter_output), distance = sample_rate * dist)
     start_chirp_index, end_chirp_index = indices[0], indices[-1]
+
     data_start_index = start_chirp_index + prefix_len
     data_end_index = end_chirp_index - chirp_sample_count - prefix_len
+    plt.plot(matched_filter_output)
+    plt.axvline(start_chirp_index)
+    plt.axvline(end_chirp_index)
+    plt.show()
     recording_data_len = data_end_index - data_start_index + 1
     excess_len = recording_data_len % symbol_len
     
@@ -394,7 +399,7 @@ print(file_name, file_type, file_size_bits)
 metadata_bits_len = 8 * (len(file_name) + len(file_type) + len(str(file_size_bits)) + 7)
 bit_arr = bitarray(recovered_bitstream[metadata_bits_len : metadata_bits_len + file_size_bits].tolist())
     
-with open(f'{file_name}.{file_type}', "bw") as f:
+with open(f'{file_name}22.{file_type}', "bw") as f:
     bit_arr.tofile(f)
 
 
