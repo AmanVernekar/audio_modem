@@ -276,7 +276,7 @@ def decode_one_symbol(symbol_index):
     complex_data = complex_data.reshape(1, num_data_bins)
     
 
-    compensate_phase = False
+    compensate_phase = True
 
     if compensate_phase:
         # store current shape of complex_data:
