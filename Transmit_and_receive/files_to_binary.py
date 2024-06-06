@@ -107,6 +107,7 @@ def extract_metadata(recovered_bitstream):
             file_name_and_type += chr(byte)
     
     file_parts = file_name_and_type.split('.')
+    print(file_parts)
     file_name = file_parts[0]  # The part before the dot
     file_type = file_parts[1]  # The part after the dot
 
