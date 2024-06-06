@@ -39,7 +39,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = True
+do_real_recording = False
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -276,7 +276,7 @@ def decode_one_symbol(symbol_index):
     complex_data = complex_data.reshape(1, num_data_bins)
     
 
-    compensate_phase = True
+    compensate_phase = False
 
     if compensate_phase:
         # store current shape of complex_data:
