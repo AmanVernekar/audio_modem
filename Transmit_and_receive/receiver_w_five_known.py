@@ -39,7 +39,7 @@ known_datachunk = known_datachunk.reshape(1, 4096)
 # STEP 1: Generate transmitted chirp and record signal
 chirp_sig = our_chirp.chirp_sig
 
-do_real_recording = False
+do_real_recording = True
 
 # Determines if we record in real life or get file which is already recorded
 if do_real_recording:
@@ -127,7 +127,7 @@ else:
 # Process through which we calculate optimal shift with error rates from known OFDM symbols
 # Off for now
 
-optimisation_resynch = True 
+optimisation_resynch = False 
 
 
 def estimate_channel_from_known_ofdm():
@@ -310,7 +310,8 @@ def decode_one_symbol(symbol_index):
     return app
 
 _, _, num_bits_in_file = extract_metadata(decode_one_symbol(num_known_symbols))
-true_num_unknown_symbols = int(np.ceil(num_bits_in_file/num_data_bins))
+# true_num_unknown_symbols = int(np.ceil(num_bits_in_file/num_data_bins))
+true_num_unknown_symbols = 77
 x = x.reshape(true_num_unknown_symbols, num_data_bins)
 num_symbols = true_num_unknown_symbols + num_known_symbols
 
