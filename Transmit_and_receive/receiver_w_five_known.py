@@ -276,9 +276,10 @@ def decode_one_symbol(symbol_index):
     complex_data = complex_data.reshape(1, num_data_bins)
     
 
-    compensate_phase = True
+    compensate_phase1 = False
+    compensate_2 = True
 
-    if compensate_phase:
+    if compensate_phase1:
         # store current shape of complex_data:
         shape = complex_data.shape
         print(f"The shape of complex_data is {complex_data.shape}")
@@ -337,6 +338,15 @@ def decode_one_symbol(symbol_index):
         complex_data_before_flat = complex_data_before
 
         complex_data = complex_data_before.reshape(shape)
+    elif compensate_2:
+        complex_data.flatten()
+        phase_factor = np.exp(-1j * np.pi / (4))
+        known_ofdm_modulated_sequence = np.resize(known_datachunk[0][lower_bin: upper_bin+1], len(complex_data))
+        normal = known_ofdm_modulated_sequence / np.abs(known_ofdm_modulated_sequence)
+        print(len(normal))
+        rotated_array = normal * phase_factor
+        print(len(rotated_array))
+        complex_data = rotated_array * complex_data
 
     hard_decision_binary_data = complex_data_hard_decision_to_binary(complex_data, 1, num_data_bins)
 
